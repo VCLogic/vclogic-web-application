@@ -1,0 +1,18 @@
+import { ArrowRight, Check, LoaderCircle, TriangleAlert } from "lucide-react";
+import type { Investor, InvestorComparison as Comparison } from "../../api/types";
+import { AssessmentMetricHelp, fitScore } from "../../components/AssessmentSemantics";
+
+const title=(value:string)=>value.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase());
+const ordinal=(value:number)=>{const rounded=Math.round(value);const mod100=rounded%100;const suffix=mod100>=11&&mod100<=13?"th":rounded%10===1?"st":rounded%10===2?"nd":rounded%10===3?"rd":"th";return `${rounded}${suffix}`};
+
+export function InvestorComparison({comparison,investors,onView,onRehearse}:{comparison:Comparison;investors:Investor[];onView:(assessmentId:string)=>void;onRehearse:(assessmentId:string)=>void}){
+ const bySlug=new Map(investors.map(row=>[row.vc_slug,row]));
+ return <section className="investor-comparison" aria-label="Investor comparison">
+  <header><div><h2>Investor comparison</h2><p>One evolving view for this pitch version. Compare each investor-like model against its own historical record; these estimates are not endorsements or real-world investment probabilities.</p></div><span className={`comparison-status ${comparison.status}`}>{comparison.status}</span></header>
+  <ol>{comparison.assessments.map(row=>{const investor=bySlug.get(row.vc_slug);return <li key={row.assessment_id} className={row.status}>
+   <div className="comparison-rank">{row.highest_estimated_fit?<strong>{row.relative_fit.percentile==null?"Highest estimated fit":"Highest historical fit"}</strong>:row.leading_group?<strong>{row.relative_fit.percentile==null?"Leading group":"Leading historical-fit group"}</strong>:row.status==="complete"?<span>Assessed</span>:row.status}</div>
+   <div className="comparison-identity">{investor?.portrait_path&&<img src={investor.portrait_path} alt=""/>}<div><h3>{investor?.display_name||row.vc_slug}</h3><p>{investor?.firm}</p></div></div>
+   {row.status==="complete"?<><dl><div className="historical-fit"><dt>Historical fit percentile</dt><dd>{row.relative_fit.percentile==null?"Unavailable":`${ordinal(row.relative_fit.percentile)} percentile`}</dd><small>{row.relative_fit.reference_count} historical pitches</small><AssessmentMetricHelp kind="percentile"/></div><div><dt>Estimated investor fit</dt><dd>{fitScore(row.investment_likelihood)==null?"Unavailable":`${fitScore(row.investment_likelihood)}/100`}</dd><AssessmentMetricHelp kind="fit"/></div><div><dt>Assessment confidence</dt><dd>{fitScore(row.decision_confidence)==null?"Unavailable":`${fitScore(row.decision_confidence)}%`}</dd><AssessmentMetricHelp kind="confidence"/></div></dl><div className="comparison-signals"><span>{row.positive_rationales.slice(0,2).map(title).join(" · ")||"No strong positive rationale identified"}</span><span>{row.negative_rationales.slice(0,2).map(title).join(" · ")||"No strong concern identified"}</span></div><div className="comparison-actions"><span className="reused-label"><Check size={13}/> Canonical result reused</span><button onClick={()=>onView(row.assessment_id)}>View dossier</button><button className="button secondary" onClick={()=>onRehearse(row.assessment_id)}>Rehearse <ArrowRight size={14}/></button></div></>:row.status==="failed"?<div className="comparison-working error" role="alert"><TriangleAlert/> {row.public_error||"Assessment did not complete."}</div>:<div className="comparison-working" role="status"><LoaderCircle/><span><strong>Building the investor-like assessment</strong><small>Reviewing the pitch, retrieving relevant investor evidence, and synthesizing the rationale profile.</small></span></div>}
+  </li>})}</ol>
+ </section>
+}

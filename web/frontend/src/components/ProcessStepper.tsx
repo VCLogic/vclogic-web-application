@@ -1,0 +1,2 @@
+type Step={id:string;label:string};
+export function ProcessStepper({steps,current}:{steps:Step[];current:string}){const active=Math.max(0,steps.findIndex(x=>x.id===current));return <ol className="process-stepper" aria-label="Assessment progress">{steps.map((step,index)=><li key={step.id} className={index<active?"complete":index===active?"current":"pending"} aria-current={index===active?"step":undefined}><span>{index<active?"✓":index+1}</span><strong>{step.label}</strong></li>)}</ol>}

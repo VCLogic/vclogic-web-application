@@ -1,0 +1,71 @@
+.safe-markdown {
+  min-width: 0;
+  color: inherit;
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+
+.safe-markdown > :first-child { margin-top: 0; }
+.safe-markdown > :last-child { margin-bottom: 0; }
+
+.safe-markdown h1,
+.safe-markdown h2,
+.safe-markdown h3,
+.safe-markdown h4 {
+  margin: 1.2em 0 .45em;
+  color: var(--ink);
+  font-family: var(--display-font);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -.015em;
+}
+
+.safe-markdown h1 { font-size: clamp(1.55rem, 3vw, 2.15rem); }
+.safe-markdown h2 { font-size: 1.35rem; }
+.safe-markdown h3 { font-size: 1.08rem; }
+.safe-markdown h4 { font-size: .94rem; }
+
+.safe-markdown p,
+.safe-markdown ul,
+.safe-markdown ol,
+.safe-markdown blockquote,
+.safe-markdown pre,
+.safe-markdown .markdown-table-scroll { margin: .75em 0; }
+.safe-markdown ul,
+.safe-markdown ol { padding-inline-start: 1.35rem; }
+.safe-markdown li + li { margin-top: .3em; }
+.safe-markdown blockquote {
+  padding: .1em 0 .1em 1rem;
+  border-left: 1px solid var(--border-strong);
+  color: var(--muted);
+}
+.safe-markdown code {
+  padding: .12em .3em;
+  border-radius: 4px;
+  background: var(--paper-100);
+  font: 500 .88em/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.safe-markdown pre {
+  max-width: 100%;
+  overflow: auto;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--graphite-950);
+  color: #eef0e8;
+}
+.safe-markdown pre code { padding: 0; background: transparent; color: inherit; }
+.safe-markdown a { color: var(--positive); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.safe-markdown a:hover { text-decoration-thickness: 2px; }
+.markdown-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.safe-markdown table { width: 100%; border-collapse: collapse; font-size: .88em; }
+.safe-markdown th,
+.safe-markdown td { padding: 9px 11px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.safe-markdown th { background: var(--paper-100); font-weight: 750; }
+.safe-markdown tr:last-child td { border-bottom: 0; }
+.safe-markdown img { max-width: 100%; height: auto; }

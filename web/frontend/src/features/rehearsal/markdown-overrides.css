@@ -1,0 +1,12 @@
+.workspace-redesign .pitch-copy.safe-markdown { white-space: normal; }
+.workspace-redesign .pitch-copy.safe-markdown p { margin-block: .85em; }
+.workspace-redesign .pitch-copy.safe-markdown h1:first-child { margin-top: 0; }
+.decision-path-group > .path-rationale > .path-contribution { margin: 0; font: .7rem/1.45 var(--reading-font); }
+.path-evidence-excerpt { margin: 7px 0; font: .72rem/1.45 var(--reading-font); }
+.path-answer-effect.safe-markdown { margin: 7px 0; color: var(--muted); font: .66rem/1.4 var(--reading-font); }
+.evidence-excerpt { margin: 12px 0; font: .9rem/1.55 var(--reading-font); }
+.agent-response-text { margin: 8px 0 0; font-size: .74rem; line-height: 1.55; }
+.agent-response-list li > .safe-markdown { font: inherit; }
+.investor-comment.safe-markdown,
+.investor-question.safe-markdown { margin-block: 0; }
+.investor-question.safe-markdown { font-family: var(--reading-font); }

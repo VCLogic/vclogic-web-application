@@ -1,0 +1,3 @@
+export type WorkspaceTab="conversation"|"assessment"|"pitch";
+const LABELS:Record<WorkspaceTab,string>={conversation:"Conversation",assessment:"Assessment",pitch:"Pitch & evidence"};
+export function WorkspaceTabs({active,onChange,showAssessment=true}:{active:WorkspaceTab;onChange:(tab:WorkspaceTab)=>void;showAssessment?:boolean}){const tabs=(Object.keys(LABELS) as WorkspaceTab[]).filter(id=>showAssessment||id!=="assessment");return <div className="workspace-tabs" role="tablist" aria-label={showAssessment?"Completed rehearsal views":"Rehearsal views"}>{tabs.map(id=><button key={id} role="tab" aria-selected={active===id} aria-controls={`workspace-${id}`} onClick={()=>onChange(id)}>{LABELS[id]}</button>)}</div>}
