@@ -69,7 +69,7 @@ it("shows dark decision-influence rows, authorizes, and submits a founder pitch"
   await user.click(screen.getByRole("button", { name: /begin investor assessment/i }));
 
   expect(createProject).toHaveBeenCalledWith({display_name:"TargetCo", company_aliases:["TargetCo"], pitch_text:"Founder pitch"});
-  expect(startAssessment).toHaveBeenCalledWith("p1", "v1", "charles");
+  expect(startAssessment).toHaveBeenCalledWith("p1", "v1", "charles", undefined);
   expect(await screen.findByText("Project ready")).toBeVisible();
 });
 

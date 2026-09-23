@@ -50,3 +50,61 @@ Web integration tests read investor reference data from the sibling pipeline. Se
 The engine owns assessment/rehearsal execution and investor data. API jobs currently store runtime artifacts beneath the configured pipeline workspace output directory. No process-wide directory change is needed to connect the repositories. Secrets, dependencies, generated assets, and runtime outputs are excluded from Git.
 
 Extracted from the current working files in `vc-digital-twins/langgraph-vc-clone-framework`; the original source remains intact.
+
+## Investor discovery and versions
+
+Open **Settings → Investors** (`/settings/investors`) to enable or disable an
+investor and choose the version used for new assessments. The gallery and pitch
+selectors show enabled, ready versions. Existing profile URLs remain readable
+for installed legacy profiles whose indexes need attention.
+
+The application discovers installed profiles from the configured input root and
+onboarding receipts under `onboarding/<vc-slug>/bundle.json`. It also discovers
+prepared bundles in the sibling `vclogic-vc-investor-onboarding/bundles` directory.
+To use different locations, supply one or more explicit roots (these replace the
+sibling default):
+
+```bash
+uv run vc-clone-web --pipeline-workspace ../vclogic-vc-agentic-assessment \
+  --investor-bundles ../vclogic-vc-investor-onboarding/bundles \
+  --investor-bundles /path/to/another/bundle-library
+```
+
+Each root may contain bundle directories or be a bundle itself. Discovery does
+not prepare bundles, download models, rebuild indexes, or call a model provider.
+Settings explains incomplete or incompatible versions. Finish onboarding/index
+preparation in the source project and refresh to make them ready. Discovery is
+cached briefly; open investor/settings pages refresh every 30 seconds, and
+**Refresh investors** performs an immediate scan.
+
+- An installed version remains selected on first discovery. A new investor with
+  exactly one ready version is enabled automatically; multiple ready versions
+  require an explicit choice.
+- New versions never replace an existing selection automatically. Explicitly
+  disabled investors stay disabled. Choices persist across application restarts.
+- Disabling prevents new assessments for that investor. Saved results remain
+  readable, and existing rehearsals and rehearsals from saved assessments retain
+  the version they started with.
+- A version is identified by its asset/configuration fingerprint, not its folder
+  name. Duplicate copies of the same bundle do not become separate choices.
+- Jobs retain a validated copy of their version before execution. Changing or
+  deleting a source bundle cannot replace the inputs of queued work or existing
+  version-bound sessions. Missing active sources require a settings choice before
+  new work; an older retained version is not silently substituted.
+
+Preferences, version snapshots, and session-version bindings are stored under
+`outputs/web-investors` in the assessment workspace. Keep this directory when
+backing up projects/rehearsals. Snapshots consume disk space and are retained so
+past sessions can resume. Do not modify retained inputs manually. Runtime outputs
+continue to use the configured application output location; version-specific
+rehearsal checkpoints live alongside each retained version in its runtime folder.
+
+Older assessments without a recorded investor version stay readable and keep
+legacy resume behavior. They are not reused as a verified match for new
+version-bound work. Historical comparison percentiles are omitted for new
+versions because the existing historical score files do not identify their
+version. Portraits are optional; newly onboarded investors use initials when no
+attributed portrait is configured.
+
+Settings is workspace-wide in this local, single-user application; it is not a
+per-account access-control system.

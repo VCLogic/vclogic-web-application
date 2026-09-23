@@ -137,7 +137,7 @@ test("saved assessment dossiers remain compact and non-overlapping", async ({ pa
 test("investor gallery is portrait-led and responsive", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /different investment lens/i })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole("img").first()).toBeVisible();
+  await expect(page.locator(".preview-portrait img, .preview-portrait .portrait-fallback").first()).toBeVisible();
   await expect(page.getByText("Investor-like simulation").first()).toBeVisible();
   await expect(page.locator(".investor-preview")).toBeVisible();
   // Fresh checkouts have no archived assessments; recurrence sections are optional.
@@ -154,7 +154,7 @@ test("investor gallery cards preserve intrinsic content at 1347px and enlarged t
   await page.setViewportSize({ width: 1347, height: 1000 });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /different investment lens/i })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole("img").first()).toBeVisible();
+  await expect(page.locator(".preview-portrait img, .preview-portrait .portrait-fallback").first()).toBeVisible();
   await expect(page.getByText("Investor-like simulation").first()).toBeVisible();
   await expect(page.locator(".investor-preview")).toBeVisible();
 
@@ -368,4 +368,28 @@ test("active rehearsal stays focused on the rationale-backed conversation", asyn
   await expect(page.getByRole("tab", { name: "Pitch & evidence" })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("investor settings manages enabled state and one active version", async ({page}, testInfo) => {
+  const first = "a".repeat(64), second = "b".repeat(64);
+  let investor = {vc_slug:"fixture-vc",display_name:"Example VC",enabled:true,available:true,active_version:first,versions:[
+    {version_id:first,label:"Original version",ready:true,capabilities:{wiki:true}},
+    {version_id:second,label:"Updated version",ready:true,capabilities:{wiki:true,precedents:true}},
+  ]};
+  await page.route("**/api/settings/investors", route=>route.fulfill({json:{investors:[investor],discovery_errors:[]}}));
+  await page.route("**/api/settings/investors/fixture-vc", async route=>{
+    investor={...investor,...route.request().postDataJSON()};
+    await route.fulfill({json:{investors:[investor],discovery_errors:[]}});
+  });
+  await page.goto("/settings/investors");
+  await expect(page.getByRole("heading",{name:"Investor settings"})).toBeVisible();
+  await page.getByLabel("Active version").selectOption(second);
+  await page.getByRole("checkbox",{name:"Enabled for new assessments"}).uncheck();
+  await page.getByRole("button",{name:"Save changes"}).click();
+  await expect(page.getByRole("status")).toHaveText("Settings saved.");
+  await page.reload();
+  await expect(page.getByLabel("Active version")).toHaveValue(second);
+  await expect(page.getByRole("checkbox")).not.toBeChecked();
+  expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
+  await page.screenshot({path:testInfo.outputPath("investor-settings.png"),fullPage:true});
 });

@@ -45,7 +45,7 @@ export function ProfileExplorer() {
         <h1 id="dossier-title">{investor.display_name}</h1>
         <p className="dossier-summary">{investor.summary || `A source-linked simulation of ${investor.display_name}'s observable investment approach.`}</p>
         <p className="dossier-purpose">A structured account of the questions, evidence, and rationales visible across this investor’s public record.</p>
-        <div className="dossier-actions"><Link className="dossier-primary-action" to={`/assess/${vcSlug}`}>Assess your pitch <ArrowRight size={16} /></Link><span>Save, compare, and rehearse from one reusable investor-like assessment.</span></div>
+        <div className="dossier-actions">{investor.start_available ? <Link className="dossier-primary-action" to={`/assess/${vcSlug}`}>Assess your pitch <ArrowRight size={16} /></Link> : <Link className="dossier-primary-action" to="/settings/investors">Review investor settings <ArrowRight size={16}/></Link>}<span>Save, compare, and rehearse from one reusable investor-like assessment.</span></div>
         <p className="dossier-disclosure">{investor.disclosure}</p>
       </div>
       <dl className="dossier-ledger" aria-label="Dossier coverage"><div><dt>Investment Memory</dt><dd>{sections.length} {sections.length === 1 ? "chapter" : "chapters"}</dd></div><div><dt>Decision taxonomy</dt><dd>{themes.length} decision {themes.length === 1 ? "theme" : "themes"}</dd></div><div><dt>Observed model</dt><dd>{rationaleCount} {rationaleCount === 1 ? "rationale" : "rationales"}</dd></div></dl>

@@ -14,6 +14,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <NavLink to="/" end>Investors</NavLink>
         <NavLink to="/pitches">My Pitches</NavLink>
         <NavLink to="/sessions">Rehearsals</NavLink>
+        <NavLink to="/settings/investors">Settings</NavLink>
       </nav>
       <p className="header-method">Evidence-grounded decision rehearsal</p>
     </header>

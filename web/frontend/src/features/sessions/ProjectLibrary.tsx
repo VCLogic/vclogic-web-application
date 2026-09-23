@@ -7,7 +7,7 @@ import "./sessions.css";
 
 export function ProjectLibrary() {
   const sessions = useQuery({ queryKey: ["sessions"], queryFn: api.sessions });
-  const investors = useQuery({ queryKey: ["investors"], queryFn: api.investors });
+  const investors = useQuery({ queryKey: ["investors"], queryFn: api.investors, refetchInterval: 30_000 });
   const bySlug = new Map(investors.data?.investors.map(investor => [investor.vc_slug, investor]));
   return <section className="project-library">
     <header className="library-hero">

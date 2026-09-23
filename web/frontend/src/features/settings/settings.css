@@ -1,0 +1,31 @@
+.investor-settings { max-width: 1160px; margin: 0 auto; padding: 48px 32px 80px; }
+.settings-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.settings-header h1 { margin: 0 0 12px; font-size: clamp(2rem, 4vw, 3.5rem); }
+.settings-header p, .settings-context { max-width: 72ch; line-height: 1.65; }
+.settings-header .button { flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; }
+.settings-context { margin: 20px 0 36px; color: var(--muted, #526055); }
+.settings-register { border-top: 1px solid var(--line, #c9c9be); }
+.investor-setting { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 40px; padding: 32px 0; border-bottom: 1px solid var(--line, #c9c9be); }
+.setting-identity h2 { margin: 0 0 12px; font-size: 1.75rem; overflow-wrap: anywhere; }
+.setting-simulation { display: block; font: 400 .8rem/1.5 var(--font-body, Inter, sans-serif); margin-top: 6px; }
+.setting-identity p { margin: 8px 0; font-size: .85rem; }
+.setting-state { font-weight: 700; }
+.setting-state.is-enabled { color: #365d48; }
+.setting-controls { min-width: 0; }
+.setting-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; cursor: pointer; }
+.setting-toggle input { width: 18px; height: 18px; accent-color: #365d48; }
+.setting-version { display: grid; gap: 8px; margin-top: 16px; font-size: .9rem; font-weight: 600; }
+.setting-version select { width: 100%; min-width: 0; min-height: 44px; border: 1px solid #92988f; background: #fffdf7; color: #17211b; padding: 10px; font: inherit; border-radius: 2px; }
+.setting-capabilities, .setting-date { font-size: .85rem; line-height: 1.6; margin: 12px 0; }
+.setting-problem { padding: 12px 14px; border: 1px solid #bca885; background: #f5eddb; color: #5e431a; font-size: .875rem; line-height: 1.6; overflow-wrap: anywhere; }
+.setting-save { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-top: 20px; }
+.setting-save [role="status"] { font-size: .875rem; color: #365d48; }
+.investor-settings :focus-visible { outline: 2px solid #365d48; outline-offset: 4px; }
+.investor-settings button:disabled, .investor-settings select:disabled { cursor: not-allowed; opacity: .55; }
+.settings-empty { padding: 32px 0; }
+@media (max-width: 700px) {
+  .investor-settings { padding: 28px 20px 56px; }
+  .settings-header { flex-direction: column; gap: 12px; }
+  .investor-setting { grid-template-columns: 1fr; gap: 12px; padding: 24px 0; }
+  .setting-identity h2 { font-size: 1.5rem; }
+}

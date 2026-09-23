@@ -41,11 +41,12 @@ export function AssessmentDossier({assessment,investor,onRehearse}:{assessment:C
   return selected.slice(0,5);
  },[citations]);
  if(assessment.status!=="complete")return <article className={`assessment-dossier ${assessment.status}`}>
-  <header><div><h3>{investor?.display_name||assessment.vc_slug}</h3><p>{investor?.firm}</p></div><span className="assessment-status">{assessment.status}</span></header>
+  <header><div><h3>{investor?.display_name||assessment.vc_slug}</h3><p>{investor?.firm}</p>{assessment.investor_version_id&&<p>Investor version {assessment.investor_version_id.slice(0,8)}</p>}</div><span className="assessment-status">{assessment.status}</span></header>
   {assessment.status==="failed"?<div className="assessment-failure" role="alert"><strong>Assessment stopped</strong><p>{assessment.public_error||"The provider run did not complete."}</p></div>:<AssessmentActivityTimeline activity={assessment.activity||[]}/>} 
  </article>;
  return <article className="assessment-dossier complete">
-  <header><div className="dossier-investor">{investor?.portrait_path&&<img src={investor.portrait_path} alt=""/>}<div><h3>{investor?.display_name||assessment.vc_slug}</h3><p>{investor?.firm}</p></div></div><span className="assessment-status">Canonical assessment</span></header>
+  {assessment.investor_version_id&&<p>Investor version {assessment.investor_version_id.slice(0,8)}</p>}
+  <header><div className="dossier-investor">{investor?.portrait_path&&<img src={investor.portrait_path} alt=""/>}<div><h3>{investor?.display_name||assessment.vc_slug}</h3><p>{investor?.firm}</p>{assessment.investor_version_id&&<p>Investor version {assessment.investor_version_id.slice(0,8)}</p>}</div></div><span className="assessment-status">Canonical assessment</span></header>
   <div className="dossier-verdict"><strong className={assessment.decision?.toLowerCase()}>{decisionLean(assessment.decision)}</strong><dl><div><dt>Estimated investor fit</dt><dd>{fitScore(assessment.investment_likelihood)==null?"Unavailable":`${fitScore(assessment.investment_likelihood)}/100`}</dd><AssessmentMetricHelp kind="fit"/></div><div><dt>Assessment confidence</dt><dd>{fitScore(assessment.decision_confidence)==null?"Unavailable":`${fitScore(assessment.decision_confidence)}%`}</dd><AssessmentMetricHelp kind="confidence"/></div></dl></div>
   <p className="dossier-summary">{founderSafeAssessmentText(assessment.decision_summary)}</p>
   <div className="dossier-signal-grid">

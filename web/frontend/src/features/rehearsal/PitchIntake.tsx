@@ -53,7 +53,7 @@ export function PitchIntake() {
         company_aliases: company.split(",").map(value => value.trim()).filter(Boolean),
         pitch_text: pitch,
       });
-      await api.startAssessment(project.project_id, project.current_version_id, vcSlug);
+      await api.startAssessment(project.project_id, project.current_version_id, vcSlug, data?.investor.investor_version_id);
       navigate(`/pitches/${project.project_id}/versions/${project.current_version_id}?tab=assessments`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to start assessment");
@@ -80,7 +80,7 @@ export function PitchIntake() {
         <div className="privacy-note"><LockKeyhole size={17} /><p>The pitch is stored locally as a verified artifact. Credentials, hidden reasoning, and raw provider responses are not exposed in the interface.</p></div>
         <label className="authorization"><input type="checkbox" checked={authorized} onChange={event => setAuthorized(event.target.checked)} /><span><strong>Authorize provider API costs</strong> for the canonical assessment.</span></label>
         {error && <p className="error">{error}</p>}
-        <button className="button intake-submit" disabled={busy || !authorized || !pitch.trim() || !company.trim()}>{busy ? "Starting assessment…" : "Begin investor assessment"}</button>
+        <button className="button intake-submit" disabled={busy || !authorized || !pitch.trim() || !company.trim() || !data?.investor.start_available}>{busy ? "Starting assessment…" : "Begin investor assessment"}</button>
       </form>
     </div>
   </section>;

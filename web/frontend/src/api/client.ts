@@ -1,4 +1,4 @@
-import type { CanonicalAssessment, CreateSessionInput, Graph, Investor, InvestorComparison, InvestorMatch, MemorySearchResponse, PitchProject, PitchProjectSummary, PitchVersion, Profile, RehearsalDepth, Session, SessionSummary } from "./types";
+import type { InvestorSettingsResponse, CanonicalAssessment, CreateSessionInput, Graph, Investor, InvestorComparison, InvestorMatch, MemorySearchResponse, PitchProject, PitchProjectSummary, PitchVersion, Profile, RehearsalDepth, Session, SessionSummary } from "./types";
 
 export class ApiError extends Error { constructor(public status:number, message:string, public code?:string){ super(message); } }
 
@@ -40,6 +40,9 @@ async function request<T>(path:string, init?:RequestInit):Promise<T>{
   return response.json() as Promise<T>;
 }
 export const api={
+  investorSettings:()=>request<InvestorSettingsResponse>("/api/settings/investors"),
+  refreshInvestors:()=>request<InvestorSettingsResponse>("/api/settings/investors/refresh",{method:"POST"}),
+  updateInvestorSettings:(slug:string,body:{enabled:boolean;active_version:string|null})=>request<InvestorSettingsResponse>(`/api/settings/investors/${encodeURIComponent(slug)}`,{method:"PUT",body:JSON.stringify(body)}),
   investors:()=>request<{investors:Investor[]}>("/api/investors"),
   profile:(slug:string)=>request<Profile>(`/api/investors/${slug}`),
   profileGraph:(slug:string)=>request<Graph>(`/api/investors/${slug}/rationale-graph`),
@@ -57,12 +60,12 @@ export const api={
   pitchVersion:(projectId:string,versionId:string)=>request<PitchVersion & {pitch_text:string}>(`/api/projects/${projectId}/versions/${versionId}`),
   assessments:(projectId:string,versionId:string)=>request<{assessments:CanonicalAssessment[]}>(`/api/projects/${projectId}/versions/${versionId}/assessments`),
   assessment:(id:string)=>request<CanonicalAssessment>(`/api/assessments/${id}`),
-  startAssessment:(projectId:string,versionId:string,vcSlug:string)=>request<{assessment_id:string;status:string;event_url:string}>(`/api/projects/${projectId}/versions/${versionId}/assessments`,{method:"POST",body:JSON.stringify({vc_slug:vcSlug,authorize_provider_cost:true})}),
+  startAssessment:(projectId:string,versionId:string,vcSlug:string,investorVersionId?:string|null)=>request<{assessment_id:string;status:string;event_url:string}>(`/api/projects/${projectId}/versions/${versionId}/assessments`,{method:"POST",body:JSON.stringify({vc_slug:vcSlug,investor_version_id:investorVersionId,authorize_provider_cost:true})}),
   matches:(projectId:string,versionId:string)=>request<{matches:InvestorMatch[]}>(`/api/projects/${projectId}/versions/${versionId}/matches`),
   match:(id:string)=>request<InvestorMatch>(`/api/matches/${id}`),
-  startMatch:(projectId:string,versionId:string,vcSlugs:string[])=>request<{match_id:string;status:string;event_url:string}>(`/api/projects/${projectId}/versions/${versionId}/matches`,{method:"POST",body:JSON.stringify({vc_slugs:vcSlugs,authorize_provider_cost:true})}),
+  startMatch:(projectId:string,versionId:string,vcSlugs:string[],investorVersions:Record<string,string>={})=>request<{match_id:string;status:string;event_url:string}>(`/api/projects/${projectId}/versions/${versionId}/matches`,{method:"POST",body:JSON.stringify({vc_slugs:vcSlugs,investor_versions:investorVersions,authorize_provider_cost:true})}),
   retryMatch:(id:string,vcSlug:string)=>request<InvestorMatch>(`/api/matches/${id}/retry/${vcSlug}`,{method:"POST"}),
   comparison:(projectId:string,versionId:string)=>request<InvestorComparison>(`/api/projects/${projectId}/versions/${versionId}/comparison`),
-  updateComparison:(projectId:string,versionId:string,vcSlugs:string[],authorizeProviderCost:boolean)=>request<InvestorComparison>(`/api/projects/${projectId}/versions/${versionId}/comparison`,{method:"POST",body:JSON.stringify({vc_slugs:vcSlugs,authorize_provider_cost:authorizeProviderCost})}),
+  updateComparison:(projectId:string,versionId:string,vcSlugs:string[],authorizeProviderCost:boolean,investorVersions:Record<string,string>={})=>request<InvestorComparison>(`/api/projects/${projectId}/versions/${versionId}/comparison`,{method:"POST",body:JSON.stringify({vc_slugs:vcSlugs,investor_versions:investorVersions,authorize_provider_cost:authorizeProviderCost})}),
   startAssessmentRehearsal:(id:string,depth:RehearsalDepth)=>request<{session_id:string;status:string;event_url:string}>(`/api/assessments/${id}/rehearsals`,{method:"POST",body:JSON.stringify({rehearsal_depth:depth})}),
 };

@@ -66,8 +66,20 @@ Files: `README.md`, browser tests, approved spec/plan.
 - Task 1: complete. Catalog, settings API, configured roots, duplicate handling, validation and persistence tested.
 - Task 2: complete. Recorded versions now bind assessment reuse, match/comparison IDs, rehearsal start and resume. Legacy comparison IDs are retained during migration.
 - Task 3: complete. Settings, automatic refresh, version-aware requests, stale-selection handling and responsive navigation implemented.
-- Task 4: complete pending final verification record below. Offline real Mac Conwell snapshot and engine live-package verification passed without provider calls; independent review findings have regression tests.
+- Task 4: complete. Offline real Mac Conwell snapshot and engine live-package verification passed without provider calls; independent review findings have regression tests.
 - Ruling: profile browsing uses validated source locations without copying entire bundles; execution creates retained snapshots before queuing. Profile cache includes source location and each presenter is restricted to one investor, preventing disabled-neighbor leakage.
 - Ruling: legacy profiles without compatible indexes remain inspectable by their existing URLs; Settings explains readiness and new-work selectors exclude them. The web app does not silently rebuild indexes or change provider configuration.
 - Ruling: retain the already-installed version at first discovery even when other ready bundles exist, preserving the current selection. Multiple uninstalled versions still require a settings choice.
 - Ruling: workspace changes stay on feat/investor-version-settings; no push, merge, or deployment requested.
+
+## Final verification — 2026-09-23
+
+- `.venv/bin/python -m pytest -q`: 110 passed, 3 skipped (archived rehearsal fixtures absent). Existing Starlette/AnyIO deprecation warning remains.
+- `npm test -- --run --maxWorkers=2`: 93 passed across 24 files.
+- `npm run build`: passed; existing Vite large-chunk advisory remains.
+- Browser smoke suite: 8 passed across desktop/mobile, covering branding, gallery, active rehearsal and settings save/reload.
+- Impeccable detector: no findings on new settings files. Desktop and mobile settings screenshots inspected.
+- Real-data offline check: discovered 7 investors and 4 distinct Mac Conwell versions, preserved installed selection, retained the ready installed bundle and verified an engine live pitch package. Temporary verification files removed. No model calls or model downloads.
+- Independent review: malformed manifests/indexes, missing inventory assets, mismatched identities, duplicate precedence, disabled-neighbor exposure, source-location cache changes and legacy comparison migration all addressed with regressions.
+- Final source-race and pending-onboarding regressions: source disappearance yields a recoverable refresh error; first completed version activates automatically unless explicitly disabled.
+- Remaining data prerequisites: six installed legacy profiles have absent/incompatible indexes. Settings reports these; the implementation does not fabricate readiness or silently rebuild upstream data. Paid live assessment/rehearsal was not exercised.
