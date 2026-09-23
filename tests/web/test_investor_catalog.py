@@ -253,3 +253,27 @@ def test_profile_uses_remaining_duplicate_when_first_source_is_removed(tmp_path)
     shutil.rmtree(first)
     registry.refresh()
     assert profiles.profile('new-vc').sections
+
+
+def test_source_disappearing_before_first_job_has_recoverable_error(tmp_path):
+    import shutil
+    root = bundle(tmp_path/'bundles/v1')
+    registry = catalog(tmp_path)
+    assert registry.settings()['investors'][0]['available']
+    shutil.rmtree(root)
+    with pytest.raises(ValueError, match='[Rr]efresh'):
+        registry.select('new-vc')
+
+
+@pytest.mark.parametrize('explicitly_disabled', [False, True])
+def test_finishing_onboarding_activates_pending_vc_but_respects_explicit_disable(tmp_path, explicitly_disabled):
+    root = bundle(tmp_path/'bundles/v1', ready=False)
+    registry = catalog(tmp_path)
+    assert not registry.settings()['investors'][0]['available']
+    if explicitly_disabled:
+        registry.update('new-vc', enabled=False, active_version=None)
+    bundle(root, ready=True)
+    state = registry.refresh()['investors'][0]
+    assert state['enabled'] is (not explicitly_disabled)
+    if not explicitly_disabled:
+        assert state['active_version'] is not None

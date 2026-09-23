@@ -159,11 +159,11 @@ class InvestorCatalog:
             preferences = self._preferences()
             changed = False
             for slug, candidates in versions.items():
-                if slug not in preferences:
+                if slug not in preferences or preferences[slug].get('automatic_pending', False):
                     ready = [row.version_id for row in candidates.values() if row.ready]
                     installed = [row.version_id for row in candidates.values() if row.installed]
                     active = installed[0] if len(installed) == 1 else (ready[0] if len(ready) == 1 else None)
-                    preferences[slug] = dict(enabled=active is not None, active_version=active)
+                    preferences[slug] = dict(enabled=active is not None, active_version=active, automatic_pending=active is None)
                     changed = True
             if changed:
                 atomic_json(self.preferences_path, preferences)
@@ -199,7 +199,7 @@ class InvestorCatalog:
             # A missing selection may be retained while disabling, but never introduced.
             if (enabled or active_version != current.get('active_version')) and (not selected or not selected.ready):
                 raise ValueError('Select a ready investor version before enabling it.')
-            preferences[slug] = dict(enabled=enabled, active_version=active_version)
+            preferences[slug] = dict(enabled=enabled, active_version=active_version, automatic_pending=False)
             atomic_json(self.preferences_path, preferences)
             return self._settings(preferences)
 
@@ -233,4 +233,7 @@ class InvestorCatalog:
                 candidate = self._versions.get(slug, {}).get(version_id)
             if candidate is None:
                 raise ValueError('The recorded investor version is unavailable.')
-            return materialize(candidate, destination, self.workspace, self.config)
+            try:
+                return materialize(candidate, destination, self.workspace, self.config)
+            except OSError as exc:
+                raise ValueError('Investor assets changed or could not be retained. Refresh investors and check the bundle and available disk space.') from exc
