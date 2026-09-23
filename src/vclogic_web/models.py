@@ -12,6 +12,7 @@ class PublicModel(BaseModel):
 
 
 class CreateSessionRequest(PublicModel):
+    investor_version_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     vc_slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     company_aliases: tuple[str, ...] = Field(min_length=1, max_length=8)
     pitch_text: str = Field(min_length=1, max_length=200_000)
@@ -58,6 +59,7 @@ class ApiError(PublicModel):
 
 
 class InvestorCard(PublicModel):
+    investor_version_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     vc_slug: str
     display_name: str
     firm: str
@@ -264,6 +266,7 @@ class JobResponse(PublicModel):
 
 
 class SessionSummary(PublicModel):
+    investor_version_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     session_id: str
     vc_slug: str
     investor_display_name: str
@@ -286,6 +289,7 @@ class SessionListResponse(PublicModel):
 
 
 class SessionDetailResponse(PublicModel):
+    investor_version_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     schema_version: Literal["vc-clone-session-detail-v1"] = Field(
         default="vc-clone-session-detail-v1", alias="schema"
     )
@@ -413,6 +417,7 @@ class AssessmentCitationView(PublicModel):
 
 
 class CanonicalAssessmentDetail(PublicModel):
+    investor_version_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     schema_version: Literal["vc-clone-canonical-assessment-v1"] = Field(
         default="vc-clone-canonical-assessment-v1", alias="schema"
     )
@@ -445,6 +450,7 @@ class CanonicalAssessmentDetail(PublicModel):
 
 
 class CreateCanonicalAssessmentRequest(PublicModel):
+    investor_version_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     vc_slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     authorize_provider_cost: Literal[True]
 
@@ -489,6 +495,7 @@ class RelativeFitView(PublicModel):
 
 
 class MatchAssessmentRow(PublicModel):
+    investor_version_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     assessment_id: str
     vc_slug: str
     status: Literal["queued", "running", "complete", "failed"]
@@ -556,3 +563,8 @@ class PublicEvent(PublicModel):
     session_id: str
     stage: str
     payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class UpdateInvestorSettings(PublicModel):
+    enabled: bool
+    active_version: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")

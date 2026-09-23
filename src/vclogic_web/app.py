@@ -11,6 +11,7 @@ from vc_clone_graph.rehearsal_artifacts import PendingAnswerConflict
 from .jobs import SessionBusyError
 from .models import (
     AnswerRequest,
+    UpdateInvestorSettings,
     ApiError,
     CreateSessionRequest,
     InvestorListResponse,
@@ -22,12 +23,17 @@ from .models import (
     CreateAssessmentRehearsalRequest,
 )
 from .profiles import ProfileService
+from .investor_catalog import InvestorCatalog
+from .catalog_profiles import CatalogProfiles
+from vc_clone_graph.rehearsal_config import load_rehearsal_config
 from .service import RehearsalWebService
 
 
 def create_app(
     *,
     testing: bool = False,
+    investor_catalog: InvestorCatalog | None = None,
+    investor_bundle_roots: list[Path] | None = None,
     profile_service: ProfileService | None = None,
     rehearsal_service: RehearsalWebService | None = None,
     rehearsal_config: Path | None = None,
@@ -39,13 +45,38 @@ def create_app(
     workspace = (pipeline_workspace or Path.cwd()).resolve()
     profile_backend = profile_service
     session_backend = rehearsal_service
-    if profile_backend is None and not testing:
-        profile_backend = ProfileService(workspace / "inputs", workspace=workspace)
+    if investor_catalog is None and not testing:
+        config_path = workspace / (rehearsal_config or Path("configs/rehearsal-charles-v41-grounded.toml"))
+        investor_catalog = InvestorCatalog(workspace=workspace,
+            config=load_rehearsal_config(config_path, workspace=workspace), bundle_roots=investor_bundle_roots)
+    if profile_backend is None and investor_catalog is not None:
+        profile_backend = CatalogProfiles(investor_catalog)
     if session_backend is None and not testing:
         session_backend = RehearsalWebService(
             workspace / (rehearsal_config or Path("configs/rehearsal-charles-v41-grounded.toml")),
             workspace=workspace,
+            investor_catalog=investor_catalog,
         )
+
+    def catalog() -> InvestorCatalog:
+        if investor_catalog is None:
+            raise HTTPException(status_code=503, detail="investor settings unavailable")
+        return investor_catalog
+
+    @app.get("/api/settings/investors")
+    def investor_settings():
+        return catalog().settings()
+
+    @app.post("/api/settings/investors/refresh")
+    def refresh_investors():
+        return catalog().refresh()
+
+    @app.put("/api/settings/investors/{vc_slug}")
+    def update_investor(vc_slug: str, request: UpdateInvestorSettings):
+        try:
+            return catalog().update(vc_slug, enabled=request.enabled, active_version=request.active_version)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

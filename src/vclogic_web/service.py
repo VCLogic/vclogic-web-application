@@ -47,11 +47,13 @@ class RehearsalWebService:
         config_path: Path,
         *,
         workspace: Path | None = None,
+        investor_catalog=None,
         coordinator: JobCoordinator | None = None,
         project_store: PitchProjectStore | None = None,
         assessment_service: CanonicalAssessmentService | None = None,
         matching_service: MatchingService | None = None,
     ) -> None:
+        self.investor_catalog = investor_catalog
         self.workspace = (workspace or Path.cwd()).resolve()
         candidate = Path(config_path)
         if not candidate.is_absolute():

@@ -34,6 +34,8 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--pipeline-workspace", type=Path, required=True,
                         help="Pipeline checkout containing configs, inputs, and runtime outputs")
+    parser.add_argument("--investor-bundles", type=Path, action="append",
+                        help="Directory of onboarding bundles; repeat for multiple locations")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--allow-remote", action="store_true")
@@ -54,6 +56,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         pipeline_workspace=args.pipeline_workspace.resolve(),
         rehearsal_config=args.config,
         static_root=static_root,
+        investor_bundle_roots=args.investor_bundles,
     )
     uvicorn.run(app, host=host, port=args.port)
 

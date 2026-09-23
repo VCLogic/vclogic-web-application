@@ -60,7 +60,7 @@ def test_gallery_uses_like_names_and_disclosure() -> None:
             isinstance(count, int) and 0 < count <= investigation_count
             for count in counts.values()
         )
-    assert len(cards) == 6
+    assert {card.vc_slug for card in cards} == set(service._profiles)
 
 
 def test_investor_card_recurrence_maps_default_empty_for_legacy_callers() -> None:
@@ -516,7 +516,7 @@ def test_investor_routes_are_configuration_driven() -> None:
     response = client.get("/api/investors")
 
     assert response.status_code == 200
-    assert len(response.json()["investors"]) == 6
+    assert {row["vc_slug"] for row in response.json()["investors"]} == set(service._profiles)
     assert client.get(
         "/api/investors/charles-hudson-precursor-ventures/rationale-graph"
     ).status_code == 200
