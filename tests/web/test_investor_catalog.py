@@ -14,7 +14,7 @@ def bundle(root: Path, slug='new-vc', text='First memory', ready=True):
     files = {
         f'inputs/investors/{slug}.toml': f'vc_slug = "{slug}"\ndisplay_name = "New VC"\nwiki_path = "wiki/{slug}"\n',
         f'inputs/wiki/{slug}/persona.md': text,
-        'inputs/taxonomy/codebook_v_final.json': '[]',
+        'inputs/taxonomy/codebook_v_final.json': json.dumps([{'label':'founder_market_fit','definition':'Founder domain knowledge','coarse_parent':'team'}]),
         f'configs/investors/{slug}/canonical.toml': (ENGINE/'configs/canonical-live-v41.toml').read_text().replace('live-investor', slug).replace('enabled = true', 'enabled = false'),
         f'configs/investors/{slug}/rehearsal.toml': DEFAULT.read_text().replace('configs/canonical-live-v41.toml', f'configs/investors/{slug}/canonical.toml').replace('enabled = true', 'enabled = false'),
     }
@@ -146,3 +146,110 @@ def test_settings_api_and_gallery_share_catalog(tmp_path):
     assert response.status_code == 200
     assert client.get('/api/investors').json()['investors'] == []
     assert client.put('/api/settings/investors/new-vc', json={'enabled': True, 'active_version': 'bad'}).status_code == 422
+
+
+def test_installed_version_wins_initial_selection_over_other_bundles(tmp_path):
+    import shutil
+    installed = bundle(tmp_path/'bundles'/'installed')
+    workspace = tmp_path/'pipeline'
+    shutil.copytree(installed/'inputs', workspace/'inputs')
+    shutil.copytree(installed/'configs', workspace/'configs')
+    target = workspace/'onboarding/new-vc'
+    target.mkdir(parents=True)
+    shutil.copyfile(installed/'bundle.json', target/'bundle.json')
+    bundle(tmp_path/'bundles'/'other', text='Different version')
+    service = catalog(tmp_path)
+    row = service.settings()['investors'][0]
+    assert row['enabled']
+    assert len(row['versions']) == 2
+    assert (service.select('new-vc').input_root/'wiki/new-vc/persona.md').read_text() == 'First memory'
+
+
+@pytest.mark.parametrize('bad', [[], {'vc_slug': 'bad', 'files': {}, 'capabilities': []}])
+def test_malformed_manifest_does_not_break_discovery(tmp_path, bad):
+    root = tmp_path/'bundles/bad'
+    root.mkdir(parents=True)
+    (root/'bundle.json').write_text(json.dumps(bad))
+    bundle(tmp_path/'bundles/good')
+    result = catalog(tmp_path).settings()
+    assert any(row['vc_slug'] == 'new-vc' for row in result['investors'])
+
+
+@pytest.mark.parametrize('missing', ['inputs/taxonomy/codebook_v_final.json', 'inputs/indexes/new-vc.json', 'inputs/wiki/new-vc/persona.md'])
+def test_manifest_must_include_all_execution_assets(tmp_path, missing):
+    root = bundle(tmp_path/'bundles/v1')
+    raw = json.loads((root/'bundle.json').read_text())
+    del raw['files'][missing]
+    (root/'bundle.json').write_text(json.dumps(raw))
+    row = catalog(tmp_path).settings()['investors'][0]['versions'][0]
+    assert not row['ready']
+    assert 'manifest' in row['error']
+
+
+def test_invalid_duplicate_cannot_hide_valid_bundle(tmp_path):
+    import shutil
+    root = bundle(tmp_path/'bundles/a-good')
+    bad = tmp_path/'bundles/z-bad'
+    shutil.copytree(root, bad)
+    (bad/'inputs/wiki/new-vc/persona.md').write_text('corrupt')
+    row = catalog(tmp_path).settings()['investors'][0]
+    assert row['available']
+    assert len(row['versions']) == 1
+
+
+def test_mismatched_registry_identity_is_not_ready(tmp_path):
+    root = bundle(tmp_path/'bundles/v1')
+    path = root/'inputs/investors/new-vc.toml'
+    path.write_text(path.read_text().replace('vc_slug = "new-vc"', 'vc_slug = "other-vc"'))
+    raw = json.loads((root/'bundle.json').read_text())
+    raw['files']['inputs/investors/new-vc.toml'] = sha256(path.read_bytes()).hexdigest()
+    (root/'bundle.json').write_text(json.dumps(raw))
+    version = catalog(tmp_path).settings()['investors'][0]['versions'][0]
+    assert not version['ready']
+    assert 'identity' in version['error']
+
+
+def test_installed_gallery_never_leaks_other_disabled_profiles(tmp_path):
+    import shutil
+    from vclogic_web.catalog_profiles import CatalogProfiles
+    workspace = tmp_path/'pipeline'
+    for slug in ('new-vc', 'other-vc'):
+        root = bundle(tmp_path/'bundles'/slug, slug=slug)
+        shutil.copytree(root/'inputs', workspace/'inputs', dirs_exist_ok=True)
+        shutil.copytree(root/'configs', workspace/'configs', dirs_exist_ok=True)
+        receipt = workspace/f'onboarding/{slug}/bundle.json'
+        receipt.parent.mkdir(parents=True)
+        shutil.copyfile(root/'bundle.json', receipt)
+    registry = catalog(tmp_path)
+    settings = registry.settings()
+    other = next(r for r in settings['investors'] if r['vc_slug']=='other-vc')
+    registry.update('other-vc', enabled=False, active_version=other['active_version'])
+    cards = CatalogProfiles(registry).list_profiles()
+    assert [card.vc_slug for card in cards] == ['new-vc']
+    assert cards[0].investor_version_id == next(r for r in settings['investors'] if r['vc_slug']=='new-vc')['active_version']
+
+
+def test_malformed_index_does_not_break_other_investors(tmp_path):
+    root = bundle(tmp_path/'bundles/bad', slug='bad-vc')
+    path = root/'inputs/indexes/bad-vc.json'
+    path.write_text('[]')
+    raw = json.loads((root/'bundle.json').read_text())
+    raw['files']['inputs/indexes/bad-vc.json'] = sha256(path.read_bytes()).hexdigest()
+    (root/'bundle.json').write_text(json.dumps(raw))
+    bundle(tmp_path/'bundles/good')
+    state = catalog(tmp_path).settings()
+    assert next(r for r in state['investors'] if r['vc_slug']=='new-vc')['available']
+    assert not next(r for r in state['investors'] if r['vc_slug']=='bad-vc')['available']
+
+
+def test_profile_uses_remaining_duplicate_when_first_source_is_removed(tmp_path):
+    import shutil
+    from vclogic_web.catalog_profiles import CatalogProfiles
+    first = bundle(tmp_path/'bundles/a')
+    shutil.copytree(first, tmp_path/'bundles/b')
+    registry = catalog(tmp_path)
+    profiles = CatalogProfiles(registry)
+    assert profiles.profile('new-vc').sections
+    shutil.rmtree(first)
+    registry.refresh()
+    assert profiles.profile('new-vc').sections

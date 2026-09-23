@@ -14,7 +14,7 @@ from typing import Any
 
 from vc_clone_graph.config import load_config
 from vc_clone_graph.rehearsal_config import RehearsalConfig, load_rehearsal_config
-from vc_clone_graph.rehearsal_runtime import _registry_profile
+from vc_clone_graph.rehearsal_runtime import _registry_profile, _taxonomy, _load_portfolio
 from vc_clone_graph.retrieval import HybridWikiIndex
 from vc_clone_graph.precedents import PrecedentCorpus
 
@@ -74,6 +74,7 @@ class InvestorVersion:
     created_at: str | None = None
     capabilities: dict[str, bool] = field(default_factory=dict)
     legacy: bool = False
+    installed: bool = False
 
     def public(self) -> dict:
         return dict(version_id=self.version_id, label=self.label, ready=self.ready,
@@ -90,24 +91,30 @@ class ExecutionBinding:
 
 
 def check_inputs(root: Path, slug: str, config: RehearsalConfig, *, indexes: bool) -> None:
-    _registry_profile(root, root / f'investors/{slug}.toml')
+    profile = _registry_profile(root, root / f'investors/{slug}.toml')
+    if profile.vc_slug != slug or profile.wiki_path != (root/f'wiki/{slug}').resolve():
+        raise ValueError('investor registration identity mismatch')
     taxonomy = root / config.rehearsal.taxonomy_path
     if not taxonomy.is_file():
         raise ValueError('investor taxonomy is missing')
+    _taxonomy(taxonomy)
     if indexes:
         embedding = config.embedding.model_dump()
         identity = SimpleNamespace(metadata={'backend': embedding['kind'], **{
             key: embedding[key] for key in ('model', 'revision', 'normalize', 'document_prefix', 'query_prefix')
         }})
         HybridWikiIndex.load(root/f'indexes/{slug}.json', root/f'wiki/{slug}', identity,
-                            require_complete_embeddings=config.embedding.require_complete_index)
+                            require_complete_embeddings=True)
         if config.precedents.enabled:
             PrecedentCorpus.load(root/f'indexes/{slug}.precedents.json', root/f'data/investors/{slug}/precedents',
-                                 identity, require_complete_embeddings=config.embedding.require_complete_index)
+                                 identity, require_complete_embeddings=True)
+        _load_portfolio(config, root, slug, identity, excluded_episode_slug=None)
 
 
 def read_bundle(manifest: Path, workspace: Path) -> InvestorVersion:
     raw = json.loads(manifest.read_text())
+    if not isinstance(raw, dict):
+        raise ValueError('bundle manifest must be an object')
     slug = raw.get('vc_slug', '')
     if not isinstance(slug, str) or not SLUG.fullmatch(slug):
         raise ValueError('invalid investor identity')
@@ -119,6 +126,9 @@ def read_bundle(manifest: Path, workspace: Path) -> InvestorVersion:
         if raw.get('schema') != 'vclogic-investor-bundle-v1' or not isinstance(declared, dict) or not declared:
             raise ValueError('unsupported or empty investor bundle manifest')
         installed = manifest.parent == workspace/'onboarding'/slug
+        row.installed = installed
+        if not isinstance(raw.get('capabilities'), dict):
+            raise ValueError('bundle capabilities must be an object')
         row.capabilities = {str(k): v for k, v in raw.get('capabilities', {}).items() if isinstance(v, bool)}
         prefixes = (f'inputs/investors/{slug}.toml', f'inputs/wiki/{slug}/',
                     f'inputs/data/investors/{slug}/', f'inputs/indexes/{slug}',
@@ -150,11 +160,23 @@ def read_bundle(manifest: Path, workspace: Path) -> InvestorVersion:
         if row.config.portfolio_memory.enabled != row.capabilities.get('portfolio_memory', False) or canonical_config.portfolio_memory.enabled != row.config.portfolio_memory.enabled:
             raise ValueError('bundle portfolio capabilities disagree')
         inputs = (workspace if installed else row.source)/'inputs'
+        required = {f'inputs/investors/{slug}.toml', f'inputs/{row.config.rehearsal.taxonomy_path}', rehearsal, canonical}
+        if raw.get('ready_for_assessment') is True:
+            required.add(f'inputs/indexes/{slug}.json')
+            if row.config.precedents.enabled:
+                required.add(f'inputs/indexes/{slug}.precedents.json')
+        for folder in (inputs/f'wiki/{slug}', inputs/f'data/investors/{slug}'):
+            if folder.is_dir():
+                required.update('inputs/' + path.relative_to(inputs).as_posix() for path in folder.rglob('*') if path.is_file())
+        if required - row.files.keys():
+            raise ValueError('bundle manifest omits required execution assets')
+        if canonical_config.embedding != row.config.embedding:
+            raise ValueError('canonical and rehearsal embedding settings disagree')
         check_inputs(inputs, slug, row.config, indexes=raw.get('ready_for_assessment') is True)
         row.ready = raw.get('ready_for_assessment') is True
         if not row.ready:
             row.error = 'Onboarding has not finished building the required indexes.'
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, IndexError) as exc:
         row.error = str(exc)
     return row
 
@@ -173,6 +195,7 @@ def materialize(row: InvestorVersion, destination: Path, workspace: Path, defaul
                 shutil.copyfile(source, target)
                 if digest(target) != row.hashes[relative]:
                     raise ValueError('investor inputs changed while retaining the version; refresh and try again')
+            check_inputs(stage/'inputs', row.vc_slug, row.config, indexes=True)
             config = row.config.model_copy(deep=True)
             prefix = destination.relative_to(workspace).as_posix()
             rehearsal = config.rehearsal.model_copy(update={
@@ -193,6 +216,13 @@ def materialize(row: InvestorVersion, destination: Path, workspace: Path, defaul
 
 
 def load_binding(destination: Path, workspace: Path) -> ExecutionBinding:
+    try:
+        return _load_binding(destination, workspace)
+    except (OSError, KeyError, TypeError, AttributeError, ValueError) as exc:
+        raise ValueError('Retained investor version is unavailable or invalid. Restore its snapshot to resume this work.') from exc
+
+
+def _load_binding(destination: Path, workspace: Path) -> ExecutionBinding:
     data = json.loads((destination/'binding.json').read_text())
     # Recheck retained inputs before executing; runtime outputs are outside this inventory.
     for relative, expected in data['hashes'].items():

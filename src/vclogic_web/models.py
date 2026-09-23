@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -456,6 +456,7 @@ class CreateCanonicalAssessmentRequest(PublicModel):
 
 
 class CreateMatchRequest(PublicModel):
+    investor_versions: dict[str, Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]] = Field(default_factory=dict)
     vc_slugs: tuple[str, ...] = Field(min_length=2, max_length=6)
     authorize_provider_cost: Literal[True]
 
@@ -542,6 +543,7 @@ class InvestorComparisonDetail(PublicModel):
 
 
 class UpdateComparisonRequest(PublicModel):
+    investor_versions: dict[str, Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]] = Field(default_factory=dict)
     vc_slugs: tuple[str, ...] = Field(min_length=1, max_length=6)
     authorize_provider_cost: bool = False
 

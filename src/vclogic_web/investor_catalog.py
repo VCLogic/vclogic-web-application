@@ -5,6 +5,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 from threading import RLock
+from time import monotonic
 from typing import Iterable
 
 from vc_clone_graph.rehearsal_config import RehearsalConfig, load_rehearsal_config
@@ -30,6 +31,7 @@ class InvestorCatalog:
         self._versions: dict[str, dict[str, InvestorVersion]] = {}
         self._cache: dict[Path, tuple[tuple, InvestorVersion]] = {}
         self._errors: list[str] = []
+        self._last_refresh = 0.0
 
     def _preferences(self) -> dict:
         if not self.preferences_path.exists():
@@ -56,6 +58,8 @@ class InvestorCatalog:
     def _bundle(self, manifest: Path) -> InvestorVersion:
         # Hash/index verification is reused only while every declared file's stat is unchanged.
         raw = json.loads(manifest.read_text())
+        if not isinstance(raw, dict) or not isinstance(raw.get('files'), dict):
+            raise ValueError('invalid bundle manifest')
         installed = manifest.parent.parent == self.workspace/'onboarding'
         paths = [manifest]
         for relative in raw.get('files', {}):
@@ -97,7 +101,7 @@ class InvestorCatalog:
         if cached and cached[0] == signature:
             return cached[1]
         row = InvestorVersion(slug, '', 'Installed profile', profile.display_name, self.workspace,
-                              files=paths, config=config, canonical_relative='configs/canonical.toml', legacy=True)
+                              files=paths, config=config, canonical_relative='configs/canonical.toml', legacy=True, installed=True)
         try:
             for relative, path in paths.items():
                 safe_file(self.workspace, path.relative_to(self.workspace).as_posix())
@@ -105,7 +109,7 @@ class InvestorCatalog:
             load_config(canonical)
             check_inputs(inputs, slug, config, indexes=True)
             row.ready = True
-        except (OSError, ValueError, KeyError, TypeError) as exc:
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, IndexError) as exc:
             row.error = str(exc)
         row.version_id = sha256(json.dumps([row.hashes, config.model_dump(mode='json')], sort_keys=True).encode()).hexdigest()
         row.capabilities = dict(wiki=True, precedents=config.precedents.enabled,
@@ -131,7 +135,13 @@ class InvestorCatalog:
                     except (ValueError, TypeError, KeyError):
                         # Produce a visible invalid version when a manifest has a usable identity.
                         row = read_bundle(path, self.workspace)
-                    versions.setdefault(row.vc_slug, {})[row.version_id] = row
+                    candidates = versions.setdefault(row.vc_slug, {})
+                    existing = candidates.get(row.version_id)
+                    if existing is None or (row.ready and not existing.ready) or (row.ready == existing.ready and row.installed):
+                        row.installed = row.installed or bool(existing and existing.installed)
+                        candidates[row.version_id] = row
+                    elif row.installed:
+                        existing.installed = True
                     if path.parent == self.workspace/'onboarding'/row.vc_slug:
                         installed_slugs.add(row.vc_slug)
                 except (OSError, ValueError, TypeError, KeyError) as exc:
@@ -143,7 +153,7 @@ class InvestorCatalog:
                 try:
                     row = self._legacy(path, inputs)
                     versions.setdefault(row.vc_slug, {})[row.version_id] = row
-                except (OSError, ValueError, KeyError, TypeError) as exc:
+                except (OSError, ValueError, KeyError, TypeError, AttributeError, IndexError) as exc:
                     self._errors.append(f'{path.stem}: {exc}')
             self._versions = versions
             preferences = self._preferences()
@@ -151,10 +161,13 @@ class InvestorCatalog:
             for slug, candidates in versions.items():
                 if slug not in preferences:
                     ready = [row.version_id for row in candidates.values() if row.ready]
-                    preferences[slug] = dict(enabled=len(ready) == 1, active_version=ready[0] if len(ready) == 1 else None)
+                    installed = [row.version_id for row in candidates.values() if row.installed]
+                    active = installed[0] if len(installed) == 1 else (ready[0] if len(ready) == 1 else None)
+                    preferences[slug] = dict(enabled=active is not None, active_version=active)
                     changed = True
             if changed:
                 atomic_json(self.preferences_path, preferences)
+            self._last_refresh = monotonic()
             return self._settings(preferences)
 
     def _settings(self, preferences: dict) -> dict:
@@ -170,7 +183,10 @@ class InvestorCatalog:
         return dict(investors=rows, discovery_errors=self._errors)
 
     def settings(self) -> dict:
-        return self.refresh()
+        with self._guard:
+            if self._last_refresh and monotonic() - self._last_refresh < 5:
+                return self._settings(self._preferences())
+            return self.refresh()
 
     def update(self, slug: str, *, enabled: bool, active_version: str | None) -> dict:
         with self._guard:
@@ -189,7 +205,7 @@ class InvestorCatalog:
 
     def select(self, slug: str, expected_version: str | None = None) -> ExecutionBinding:
         with self._guard:
-            self.refresh()
+            self.settings()
             selected = self._preferences().get(slug, {})
             version = selected.get('active_version')
             if not selected.get('enabled') or not version:

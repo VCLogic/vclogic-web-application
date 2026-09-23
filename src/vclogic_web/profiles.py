@@ -158,13 +158,14 @@ def _like_name(display_name: str) -> str:
 
 
 class ProfileService:
-    def __init__(self, input_root: Path, *, workspace: Path) -> None:
+    def __init__(self, input_root: Path, *, workspace: Path, include_historical: bool = True, profile: InvestorProfile | None = None) -> None:
+        self.include_historical = include_historical
         self.input_root = Path(input_root).resolve()
         self.workspace = Path(workspace).resolve()
         if not self.input_root.is_relative_to(self.workspace):
             raise ValueError("profile input root must be inside the workspace")
         self._profiles = {
-            row.vc_slug: row for row in list_investors(self.input_root)
+            row.vc_slug: row for row in ((profile,) if profile is not None else list_investors(self.input_root))
         }
 
     def _profile(self, vc_slug: str) -> InvestorProfile:
@@ -352,6 +353,8 @@ class ProfileService:
         return "-".join(_WORDS.findall(profile.display_name.casefold()))
 
     def _investigations(self, vc_slug: str) -> tuple[dict[str, Any], ...]:
+        if not self.include_historical:
+            return ()
         profile = self._profile(vc_slug)
         registry_path = self.workspace / "evaluation/canonical_runs_v4_v41_portfolio_2026-08-15.json"
         if not registry_path.is_file():

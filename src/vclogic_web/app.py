@@ -292,7 +292,10 @@ def create_app(
 
     @app.post("/api/sessions", status_code=202)
     def create_session(request: CreateSessionRequest):
-        return sessions().create_session(request)
+        try:
+            return sessions().create_session(request)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @app.get("/api/sessions/{session_id}")
     def session(session_id: str):

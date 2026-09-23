@@ -7,19 +7,20 @@ from vclogic_web import app, cli
 
 def test_app_routes_services_to_pipeline_workspace(tmp_path, monkeypatch):
     calls = {}
-    def profile(input_root, *, workspace):
-        calls['profile'] = (input_root, workspace)
+    shared = object()
+    def profile(catalog):
+        calls['profile'] = catalog
         return object()
-    def rehearsal(config_path, *, workspace):
-        calls['rehearsal'] = (config_path, workspace)
+    def rehearsal(config_path, *, workspace, investor_catalog):
+        calls['rehearsal'] = (config_path, workspace, investor_catalog)
         return object()
-    monkeypatch.setattr(app, 'ProfileService', profile)
+    monkeypatch.setattr(app, 'CatalogProfiles', profile)
     monkeypatch.setattr(app, 'RehearsalWebService', rehearsal)
     workspace = tmp_path / 'pipeline'
-    application = app.create_app(pipeline_workspace=workspace, rehearsal_config=Path('configs/example.toml'))
+    application = app.create_app(pipeline_workspace=workspace, rehearsal_config=Path('configs/example.toml'), investor_catalog=shared)
     assert TestClient(application).get('/api/health').status_code == 200
-    assert calls['profile'] == (workspace / 'inputs', workspace)
-    assert calls['rehearsal'] == (workspace / 'configs/example.toml', workspace)
+    assert calls['profile'] is shared
+    assert calls['rehearsal'] == (workspace / 'configs/example.toml', workspace, shared)
 
 
 def test_cli_keeps_frontend_relative_to_app_checkout(tmp_path, monkeypatch):

@@ -47,11 +47,13 @@ class CanonicalAssessmentService:
         store: PitchProjectStore,
         workspace: Path,
         rehearsal_config: Any,
+        investor_catalog=None,
         baseline_builder: Callable[..., Any] = build_or_load_canonical_baseline,
     ) -> None:
         self.store = store
         self.workspace = Path(workspace).resolve()
         self.rehearsal_config = rehearsal_config
+        self.investor_catalog = investor_catalog
         self.baseline_builder = baseline_builder
         self._guard = RLock()
         self._active: set[str] = set()
@@ -274,9 +276,12 @@ class CanonicalAssessmentService:
         )
 
     def ensure_assessment(
-        self, project_id: str, version_id: str, vc_slug: str
+        self, project_id: str, version_id: str, vc_slug: str,
+        investor_version_id: str | None = None,
     ) -> CanonicalAssessmentDetail:
-        root = self._assessment_root(project_id, version_id, vc_slug)
+        binding = self.investor_catalog.select(vc_slug, investor_version_id) if self.investor_catalog else None
+        key = f"{vc_slug}--{binding.version_id}" if binding else vc_slug
+        root = self._assessment_root(project_id, version_id, key)
         manifest = self._manifest(root)
         with self._guard:
             if manifest.is_file():
@@ -288,6 +293,7 @@ class CanonicalAssessmentService:
                 project_id=project_id,
                 version_id=version_id,
                 vc_slug=vc_slug,
+                investor_version_id=binding.version_id if binding else None,
                 pitch_sha256=version.pitch_sha256,
                 status="queued",
                 created_at=timestamp,
@@ -360,9 +366,11 @@ class CanonicalAssessmentService:
             notify("phase1_running", {"vc_slug": current.vc_slug})
             project = self.store.get_project(current.project_id)
             pitch = self.store.read_pitch(current.project_id, current.version_id)
+            binding = (self.investor_catalog.binding(current.vc_slug, current.investor_version_id)
+                       if self.investor_catalog and current.investor_version_id else None)
             baseline = self.baseline_builder(
                 workspace=self.workspace,
-                rehearsal_config=self.rehearsal_config,
+                rehearsal_config=binding.config if binding else self.rehearsal_config,
                 session_root=root,
                 vc_slug=current.vc_slug,
                 episode_slug=f"live-assessment-{assessment_id.replace('-', '')[:16]}",

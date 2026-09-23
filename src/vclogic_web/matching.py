@@ -116,14 +116,16 @@ class MatchingService:
         return payload
 
     def create_match(
-        self, project_id: str, version_id: str, vc_slugs: tuple[str, ...]
+        self, project_id: str, version_id: str, vc_slugs: tuple[str, ...],
+        investor_versions: dict[str, str] | None = None,
     ) -> MatchRunDetail:
         if not 2 <= len(vc_slugs) <= 6:
             raise ValueError("investor match requires 2 to 6 profiles")
         if len(set(vc_slugs)) != len(vc_slugs):
             raise ValueError("investor profiles must be distinct")
         assessment_rows = [
-            self.assessments.ensure_assessment(project_id, version_id, slug)
+            self.assessments.ensure_assessment(project_id, version_id, slug,
+                **({"investor_version_id": investor_versions.get(slug)} if investor_versions is not None else {}))
             for slug in vc_slugs
         ]
         match_id = str(uuid4())
@@ -144,7 +146,7 @@ class MatchingService:
 
     def _row(self, assessment: CanonicalAssessmentDetail) -> MatchAssessmentRow:
         fit = RelativeFitView(percentile=None, reference_count=0)
-        if assessment.investment_likelihood is not None:
+        if assessment.investment_likelihood is not None and assessment.investor_version_id is None:
             fit = relative_fit(
                 assessment.investment_likelihood,
                 self.reference_scores.get(assessment.vc_slug, ()),
@@ -152,6 +154,7 @@ class MatchingService:
         return MatchAssessmentRow(
             assessment_id=assessment.assessment_id,
             vc_slug=assessment.vc_slug,
+            investor_version_id=assessment.investor_version_id,
             status=assessment.status,
             decision=assessment.decision,
             investment_likelihood=assessment.investment_likelihood,
@@ -206,8 +209,20 @@ class MatchingService:
         )
         return result
 
+    def _retain_legacy_comparison(self, payload: dict, path: Path) -> None:
+        if "assessment_ids" in payload:
+            return
+        historical = self.assessments.list_for_version(payload["project_id"], payload["version_id"])
+        selected = set(payload.get("selected_vc_slugs", ()))
+        payload["assessment_ids"] = {
+            row.vc_slug: row.assessment_id for row in historical
+            if row.vc_slug in selected and row.investor_version_id is None
+        }
+        _write(path, payload)
+
     def update_comparison(
-        self, project_id: str, version_id: str, vc_slugs: tuple[str, ...]
+        self, project_id: str, version_id: str, vc_slugs: tuple[str, ...],
+        investor_versions: dict[str, str] | None = None,
     ) -> InvestorComparisonDetail:
         if not 1 <= len(vc_slugs) <= 6:
             raise ValueError("investor comparison requires 1 to 6 profiles")
@@ -217,6 +232,7 @@ class MatchingService:
         with self._guard:
             if path.is_file():
                 payload = self._payload(path)
+                self._retain_legacy_comparison(payload, path)
                 selected = tuple(
                     dict.fromkeys((*payload.get("selected_vc_slugs", ()), *vc_slugs))
                 )
@@ -235,8 +251,12 @@ class MatchingService:
                     "created_at": timestamp,
                     "updated_at": timestamp,
                 }
+            retained = dict(payload.get("assessment_ids", {}))
             for slug in payload["selected_vc_slugs"]:
-                self.assessments.ensure_assessment(project_id, version_id, slug)
+                if slug in vc_slugs:
+                    retained[slug] = self.assessments.ensure_assessment(project_id, version_id, slug,
+                **({"investor_version_id": investor_versions.get(slug)} if investor_versions is not None else {})).assessment_id
+            payload["assessment_ids"] = retained
             _write(path, payload)
         return self.get_comparison(project_id, version_id)
 
@@ -246,17 +266,18 @@ class MatchingService:
         path = self._comparison_path(project_id, version_id)
         if not path.is_file():
             return None
-        payload = self._payload(path)
+        with self._guard:
+            payload = self._payload(path)
+            self._retain_legacy_comparison(payload, path)
         selected = tuple(str(value) for value in payload.get("selected_vc_slugs", ()))
-        assessments = {
-            row.vc_slug: row
-            for row in self.assessments.list_for_version(project_id, version_id)
-        }
+        assessments = {}
+        for slug, assessment_id in payload.get("assessment_ids", {}).items():
+            assessments[slug] = self.assessments.get_assessment(assessment_id)
         rows = self._decorate_rows(
             [self._row(assessments[slug]) for slug in selected if slug in assessments],
             selected,
         )
-        missing = tuple(row.vc_slug for row in rows if row.status != "complete")
+        missing = tuple(slug for slug in selected if slug not in assessments or assessments[slug].status != "complete")
         return InvestorComparisonDetail(
             comparison_id=str(payload["comparison_id"]),
             project_id=project_id,

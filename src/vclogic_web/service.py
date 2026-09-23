@@ -16,6 +16,7 @@ from vc_clone_graph.rehearsal_artifacts import RehearsalArtifactStore
 from vc_clone_graph.rehearsal_config import RehearsalConfig, load_rehearsal_config
 from vc_clone_graph.rehearsal_runtime import list_investors
 from .assessment_service import CanonicalAssessmentService
+from .investor_versions import atomic_json
 from .matching import MatchingService, load_reference_scores
 from .jobs import JobCoordinator, SessionBusyError
 from .models import (
@@ -41,6 +42,8 @@ from .project_store import PitchProjectStore
 
 class RehearsalWebService:
     """Serialized façade over the existing auditable CLI/runtime functions."""
+
+    investor_catalog = None
 
     def __init__(
         self,
@@ -70,13 +73,14 @@ class RehearsalWebService:
             store=self.project_store,
             workspace=self.workspace,
             rehearsal_config=self.config,
+            investor_catalog=investor_catalog,
         )
         input_root = Path(self.config.rehearsal.input_root)
         if not input_root.is_absolute():
             input_root = self.workspace / input_root
-        self.available_vc_slugs = {
+        self.available_vc_slugs = ({
             row.vc_slug for row in list_investors(input_root)
-        }
+        } if investor_catalog is None else set())
         reference_path = (
             self.workspace
             / "reports/evaluation/canonical-v4-v41-portfolio-2026-08-15/phase2/predictions.csv"
@@ -103,8 +107,30 @@ class RehearsalWebService:
     def _store(self, session_id: str) -> RehearsalArtifactStore:
         return RehearsalArtifactStore.open(self._root(session_id))
 
+    def _remember_binding(self, session_id, binding):
+        if binding is not None:
+            atomic_json(self.investor_catalog.root / 'sessions' / f'{session_id}.json',
+                        {'vc_slug': binding.vc_slug, 'version_id': binding.version_id})
+
+    def _session_version(self, session_id):
+        if self.investor_catalog is None:
+            return None
+        if not session_id or any(part in session_id for part in ("/", "\\", "..")):
+            raise ValueError('invalid session identifier')
+        path = self.investor_catalog.root / 'sessions' / f'{session_id}.json'
+        if not path.is_file():
+            return None
+        row = json.loads(path.read_text())
+        return row
+
+    def _session_binding(self, session_id):
+        row = self._session_version(session_id)
+        return self.investor_catalog.binding(row['vc_slug'], row['version_id']) if row else None
+
     def create_session(self, request: CreateSessionRequest) -> JobResponse:
+        binding = self.investor_catalog.select(request.vc_slug, request.investor_version_id) if self.investor_catalog else None
         session_id = str(uuid4())
+        self._remember_binding(session_id, binding)
 
         def run(emit):
             emit("preparing_inputs", {"vc_slug": request.vc_slug})
@@ -121,7 +147,7 @@ class RehearsalWebService:
             )
             with redirect_stdout(StringIO()):
                 rehearsal_cli.command_start(
-                    self.config, args, progress_callback=emit
+                    binding.config if binding else self.config, args, progress_callback=emit
                 )
             view = self.get_session(session_id)
             emit(view.status, {"decision": view.current_assessment.decision if view.current_assessment else None})
@@ -143,7 +169,10 @@ class RehearsalWebService:
             assessment.project_id, assessment.version_id
         )
         project = self.project_store.get_project(assessment.project_id)
+        binding = (self.investor_catalog.binding(assessment.vc_slug, assessment.investor_version_id)
+                   if self.investor_catalog and assessment.investor_version_id else None)
         session_id = str(uuid4())
+        self._remember_binding(session_id, binding)
 
         def run(emit):
             emit(
@@ -165,7 +194,7 @@ class RehearsalWebService:
             )
             with redirect_stdout(StringIO()):
                 rehearsal_cli.command_start(
-                    self.config, args, progress_callback=emit
+                    binding.config if binding else self.config, args, progress_callback=emit
                 )
             try:
                 store = self._store(session_id)
@@ -214,6 +243,9 @@ class RehearsalWebService:
         )
 
     def _validate_vc(self, vc_slug: str) -> None:
+        if self.investor_catalog:
+            self.investor_catalog.select(vc_slug)
+            return
         if vc_slug not in self.available_vc_slugs:
             raise ValueError(f"unknown investor profile: {vc_slug}")
 
@@ -225,7 +257,8 @@ class RehearsalWebService:
     ) -> AssessmentJobResponse:
         self._validate_vc(request.vc_slug)
         assessment = self.assessment_service.ensure_assessment(
-            project_id, version_id, request.vc_slug
+            project_id, version_id, request.vc_slug,
+            **({"investor_version_id": request.investor_version_id} if self.investor_catalog else {}),
         )
         if assessment.status != "complete" and not self.coordinator.is_busy(
             assessment.assessment_id
@@ -252,7 +285,8 @@ class RehearsalWebService:
         for vc_slug in request.vc_slugs:
             self._validate_vc(vc_slug)
         comparison = self.matching_service.update_comparison(
-            project_id, version_id, request.vc_slugs
+            project_id, version_id, request.vc_slugs,
+            **({"investor_versions": request.investor_versions} if self.investor_catalog else {}),
         )
         pending = [
             row
@@ -290,7 +324,8 @@ class RehearsalWebService:
     ) -> MatchJobResponse:
         for vc_slug in request.vc_slugs:
             self._validate_vc(vc_slug)
-        match = self.matching_service.create_match(project_id, version_id, request.vc_slugs)
+        match = self.matching_service.create_match(project_id, version_id, request.vc_slugs,
+            **({"investor_versions": request.investor_versions} if self.investor_catalog else {}))
         self.coordinator.submit(
             match.match_id,
             "investor_match",
@@ -322,18 +357,22 @@ class RehearsalWebService:
 
     def get_session(self, session_id: str) -> SessionDetailResponse:
         view = SessionViewBuilder(self._store(session_id)).build()
+        recorded = self._session_version(session_id)
+        if recorded:
+            view = view.model_copy(update={'investor_version_id': recorded['version_id']})
         return view.model_copy(
             update={"operation_active": self.coordinator.is_busy(session_id)}
         )
 
     def _resume(self, session_id: str, action: str, text: str | None = None) -> JobResponse:
         self._root(session_id)
+        binding = self._session_binding(session_id)
 
         def run(emit):
             emit("rehearsal_running", {"action": action})
             with redirect_stdout(StringIO()):
                 rehearsal_cli._resume(
-                    self.config,
+                    binding.config if binding else self.config,
                     session_id,
                     action,
                     text,
