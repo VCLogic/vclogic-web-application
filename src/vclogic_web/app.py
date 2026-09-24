@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request
+from starlette.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 
 from vc_clone_graph.rehearsal_artifacts import PendingAnswerConflict
@@ -40,7 +42,15 @@ def create_app(
     static_root: Path | None = None,
     pipeline_workspace: Path | None = None,
 ) -> FastAPI:
-    app = FastAPI(title="VC Rehearsal", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        # Validate large runtime indexes before accepting browser requests.
+        # Subsequent catalog reads reuse the verified file-signature cache.
+        if investor_catalog is not None:
+            await run_in_threadpool(investor_catalog.refresh)
+        yield
+
+    app = FastAPI(title="VCLogic", version="0.1.0", lifespan=lifespan)
     app.state.testing = testing
     workspace = (pipeline_workspace or Path.cwd()).resolve()
     profile_backend = profile_service
@@ -136,6 +146,18 @@ def create_app(
             return profiles().profile(vc_slug)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/investors/{vc_slug}/portrait")
+    def investor_portrait(vc_slug: str):
+        try:
+            path = profiles().portrait(vc_slug)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        if path is None:
+            raise HTTPException(status_code=404, detail="Portrait unavailable")
+        return FileResponse(path, media_type={".jpg": "image/jpeg", ".png": "image/png",
+                                               ".webp": "image/webp"}[path.suffix],
+                            headers={"Cache-Control": "public, max-age=86400"})
 
     @app.get("/api/investors/{vc_slug}/memory/search")
     def memory_search(

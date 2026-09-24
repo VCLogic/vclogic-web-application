@@ -57,7 +57,7 @@ async function documentOverflow(page: Page): Promise<number> {
   return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 }
 
-test("InvestorLens brand lockup and favicon remain usable", async ({ page }, testInfo) => {
+test("VCLogic brand lockup and favicon remain usable", async ({ page }, testInfo) => {
   await page.setViewportSize(testInfo.project.name === "mobile"
     ? { width: 390, height: 844 }
     : { width: 1347, height: 900 });
@@ -65,11 +65,13 @@ test("InvestorLens brand lockup and favicon remain usable", async ({ page }, tes
   expect(favicon.ok()).toBe(true);
   expect(favicon.headers()["content-type"]).toContain("image/svg+xml");
   await page.goto("/");
-  const home = page.getByRole("link", { name: "InvestorLens home" });
+  const home = page.getByRole("link", { name: "VCLogic home" });
   await expect(home).toBeVisible();
-  await expect(home.locator("svg.investor-lens-mark")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Settings", exact: true })).toBeVisible();
+  await expect(page).toHaveTitle(/VCLogic/);
+  await expect(home.locator("svg.vc-logic-mark")).toBeVisible();
   const geometry = await page.locator(".app-header").evaluate((header) => {
-    const mark = header.querySelector<SVGElement>(".investor-lens-mark")!;
+    const mark = header.querySelector<SVGElement>(".vc-logic-mark")!;
     const wordmark = header.querySelector<HTMLElement>(".wordmark")!;
     return {
       overflow: header.scrollWidth - header.clientWidth,

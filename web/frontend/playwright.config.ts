@@ -19,6 +19,7 @@ export default defineConfig({
     command: "cd ../.. && uv run vc-clone-web --pipeline-workspace ../vclogic-vc-agentic-assessment --config configs/rehearsal-charles-v41-grounded.toml --host 127.0.0.1 --port 8766",
     url: "http://127.0.0.1:8766/api/health",
     reuseExistingServer: true,
-    timeout: 30_000,
+    // Readiness includes validation of the workspace's large investor indexes.
+    timeout: 120_000,
   },
 });

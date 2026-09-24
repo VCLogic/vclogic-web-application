@@ -23,7 +23,7 @@ cd ../..
 uv run vc-clone-web --pipeline-workspace ../vclogic-vc-agentic-assessment
 ```
 
-Open http://127.0.0.1:8000. The API runs locally by default. The default config is `configs/rehearsal-charles-v41-grounded.toml` inside the pipeline workspace. `--config` paths are relative to that workspace; `--static-root` paths are relative to the application checkout. Set provider keys in the environment and prepare the pipeline configuration/indexes before requesting a live assessment; see its README. For grounded semantic retrieval, install the engine's embeddings extra with `uv sync --extra dev --extra embeddings`.
+Open http://127.0.0.1:8000. Startup validates the installed investor indexes before accepting requests; with a full investor library, wait for `Application startup complete` in the terminal. The API runs locally by default. The default config is `configs/rehearsal-charles-v41-grounded.toml` inside the pipeline workspace. `--config` paths are relative to that workspace; `--static-root` paths are relative to the application checkout. Set provider keys in the environment and prepare the pipeline configuration/indexes before requesting a live assessment; see its README. For grounded semantic retrieval, install the engine's embeddings extra with `uv sync --extra dev --extra embeddings`.
 
 The uv source override installs the sibling pipeline in editable mode. The built application wheel declares `vclogic-vc-agentic-assessment` as a dependency; deployments must supply a compatible engine wheel or configure a package source. No published package is assumed.
 
@@ -103,8 +103,64 @@ Older assessments without a recorded investor version stay readable and keep
 legacy resume behavior. They are not reused as a verified match for new
 version-bound work. Historical comparison percentiles are omitted for new
 versions because the existing historical score files do not identify their
-version. Portraits are optional; newly onboarded investors use initials when no
-attributed portrait is configured.
+version.
 
 Settings is workspace-wide in this local, single-user application; it is not a
 per-account access-control system.
+
+## Syncing an existing LangGraph workspace
+
+The assessment workspace owns the runtime inputs. Copying the frontend does not
+copy the retrieval indexes. Use the scoped migration tool to restore the six
+legacy investors from an existing LangGraph workspace (the source is read-only):
+
+```bash
+# Preview changes first; stop the web server before applying a migration.
+uv run python scripts/migrate_legacy_investors.py \
+  --source ../vc-digital-twins/langgraph-vc-clone-framework \
+  --target ../vclogic-vc-agentic-assessment
+
+# Copy and validate the runtime assets.
+uv run python scripts/migrate_legacy_investors.py \
+  --source ../vc-digital-twins/langgraph-vc-clone-framework \
+  --target ../vclogic-vc-agentic-assessment --apply
+```
+
+The migration preserves unrelated investors, including onboarded versions. It
+validates the copied inputs and keeps backups of replaced assets and settings.
+Existing assessment/version snapshots remain untouched. Backups and a per-file
+migration report are saved under `outputs/legacy-investor-migrations` in the
+assessment workspace. Run migrations while the application is stopped; the
+script checks for changed settings but does not share a transaction lock with
+running application processes.
+
+## Network access
+
+To listen on all network interfaces, choose an unused port and explicitly allow
+remote access:
+
+```bash
+uv run --extra embeddings vc-clone-web \
+  --pipeline-workspace ../vclogic-vc-agentic-assessment \
+  --host 0.0.0.0 --allow-remote --port 8001
+```
+
+Open `http://<server-ip>:8001`. After changing Python code, restart the server.
+After frontend changes, run `npm run build` in `web/frontend` and refresh the
+browser.
+
+## Automatic investor portraits
+
+The six existing attributed portraits remain bundled with the frontend. For other
+investors, opening a page that displays their portrait automatically resolves a
+matching investor profile on The Pitch and downloads the image to
+`outputs/web-investors/portraits` in the assessment workspace. This requires
+outbound HTTPS access to `www.thepitch.show` and `cdn.sanity.io`, but does not
+require a frontend rebuild or model-provider call.
+
+The lookup uses the investor's source URL when available, otherwise their name
+in The Pitch's investor directory. Ambiguous matches are left unresolved. Images
+are cached locally with source attribution; failed lookups are cached for one
+hour. If a portrait is unavailable, the portrait component displays initials and
+the investor remains usable. Portrait downloads have host, format, size, and time
+limits and do not run during the investor-list request.

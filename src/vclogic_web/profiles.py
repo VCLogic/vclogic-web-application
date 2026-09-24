@@ -12,7 +12,7 @@ from statistics import fmean
 from typing import Any
 
 from vc_clone_graph.rehearsal_runtime import InvestorProfile, list_investors
-from .investor_presentation import INVESTOR_PRESENTATION
+from .portraits import PortraitCache
 from .models import (
     EvidenceView,
     InvestorCard,
@@ -158,7 +158,8 @@ def _like_name(display_name: str) -> str:
 
 
 class ProfileService:
-    def __init__(self, input_root: Path, *, workspace: Path, include_historical: bool = True, profile: InvestorProfile | None = None) -> None:
+    def __init__(self, input_root: Path, *, workspace: Path, include_historical: bool = True, profile: InvestorProfile | None = None, portrait_cache: PortraitCache | None = None) -> None:
+        self.portraits = portrait_cache or PortraitCache(workspace)
         self.include_historical = include_historical
         self.input_root = Path(input_root).resolve()
         self.workspace = Path(workspace).resolve()
@@ -186,7 +187,7 @@ class ProfileService:
         )
         positive, negative, unresolved = displayed
         positive_counts, negative_counts, unresolved_counts = displayed_counts
-        presentation = INVESTOR_PRESENTATION.get(profile.vc_slug)
+        presentation = self.portraits.fields(profile)
         investigation_count = len(self._investigations(profile.vc_slug))
         return InvestorCard(
             vc_slug=profile.vc_slug,
@@ -196,10 +197,7 @@ class ProfileService:
             disclosure=DISCLOSURE,
             summary=f"A source-linked simulation of {profile.display_name}'s observable investment approach.",
             evidence_coverage=min(1.0, investigation_count / 10) if investigation_count else None,
-            portrait_path=presentation.portrait_path if presentation else None,
-            portrait_alt=presentation.portrait_alt if presentation else None,
-            source_profile_url=(str(presentation.source_profile_url) if presentation else None),
-            photo_attribution=presentation.photo_attribution if presentation else None,
+            **presentation,
             recurring_positive_rationales=positive,
             recurring_negative_rationales=negative,
             recurring_unresolved_rationales=unresolved,
@@ -207,6 +205,9 @@ class ProfileService:
             recurring_negative_counts=negative_counts,
             recurring_unresolved_counts=unresolved_counts,
         )
+
+    def portrait(self, vc_slug: str) -> Path | None:
+        return self.portraits.resolve(self._profile(vc_slug))
 
     def list_profiles(self) -> tuple[InvestorCard, ...]:
         return tuple(

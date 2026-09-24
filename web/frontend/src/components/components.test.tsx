@@ -17,9 +17,11 @@ describe("shared visual components", () => {
     render(<MemoryRouter initialEntries={["/sessions"]}><AppShell><CaseIndex label="Case file" items={[{id:"conversation",label:"Conversation"},{id:"assessment",label:"Assessment"}]} active="conversation" onChange={()=>{}}/><h1 id="content-title">Case content</h1></AppShell></MemoryRouter>);
     expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#main-content");
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
-    const home = screen.getByRole("link", { name: "InvestorLens home" });
+    const home = screen.getByRole("link", { name: "VCLogic home" });
     expect(home).toHaveAttribute("href", "/");
-    const mark = home.querySelector("svg.investor-lens-mark");
+    expect(home).toHaveTextContent("VCLogic");
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings/investors");
+    const mark = home.querySelector("svg.vc-logic-mark");
     expect(mark).not.toBeNull();
     expect(mark).toHaveAttribute("aria-hidden", "true");
     expect(mark).not.toHaveAttribute("role", "img");

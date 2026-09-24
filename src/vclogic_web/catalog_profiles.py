@@ -2,11 +2,13 @@
 from .investor_catalog import InvestorCatalog
 from vc_clone_graph.rehearsal_runtime import _registry_profile
 from .profiles import ProfileService
+from .portraits import PortraitCache
 
 
 class CatalogProfiles:
     def __init__(self, catalog: InvestorCatalog):
         self.catalog = catalog
+        self.portraits = PortraitCache(catalog.workspace)
         self._services: dict[tuple[str, str, str], ProfileService] = {}
 
     def _service(self, slug):
@@ -20,12 +22,12 @@ class CatalogProfiles:
         key = (slug, version.version_id, str(inputs))
         if key not in self._services:
             if version.ready:
-                service = ProfileService(inputs, workspace=inputs.parent, include_historical=False,
+                service = ProfileService(inputs, portrait_cache=self.portraits, workspace=inputs.parent, include_historical=False,
                     profile=_registry_profile(inputs, inputs/f'investors/{slug}.toml'))
             elif version.legacy:
                 # Preserve inspection of installed legacy profiles even when indexes need repair.
                 inputs = self.catalog.config.resolve_path(self.catalog.config.rehearsal.input_root)
-                service = ProfileService(inputs, workspace=self.catalog.workspace,
+                service = ProfileService(inputs, portrait_cache=self.portraits, workspace=self.catalog.workspace,
                     profile=_registry_profile(inputs, inputs/f'investors/{slug}.toml'))
             else:
                 raise ValueError(version.error or 'Investor version is not ready.')
@@ -58,3 +60,7 @@ class CatalogProfiles:
     def rationale_graph(self, slug):
         service, _, _ = self._service(slug)
         return service.rationale_graph(slug)
+
+    def portrait(self, slug):
+        service, _, _ = self._service(slug)
+        return service.portrait(slug)
