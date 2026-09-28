@@ -13,6 +13,7 @@ from typing import Any
 
 from vc_clone_graph.rehearsal_runtime import InvestorProfile, list_investors
 from .portraits import PortraitCache
+from .dossier_evidence import DossierEvidence
 from .models import (
     EvidenceView,
     InvestorCard,
@@ -158,7 +159,8 @@ def _like_name(display_name: str) -> str:
 
 
 class ProfileService:
-    def __init__(self, input_root: Path, *, workspace: Path, include_historical: bool = True, profile: InvestorProfile | None = None, portrait_cache: PortraitCache | None = None) -> None:
+    def __init__(self, input_root: Path, *, workspace: Path, include_historical: bool = True, profile: InvestorProfile | None = None, portrait_cache: PortraitCache | None = None, dossier_evidence: DossierEvidence | None = None) -> None:
+        self.dossier_evidence = dossier_evidence
         self.portraits = portrait_cache or PortraitCache(workspace)
         self.include_historical = include_historical
         self.input_root = Path(input_root).resolve()
@@ -354,6 +356,9 @@ class ProfileService:
         return "-".join(_WORDS.findall(profile.display_name.casefold()))
 
     def _investigations(self, vc_slug: str) -> tuple[dict[str, Any], ...]:
+        if self.dossier_evidence is not None:
+            self._profile(vc_slug)
+            return self.dossier_evidence.investigations
         if not self.include_historical:
             return ()
         profile = self._profile(vc_slug)
@@ -506,4 +511,6 @@ class ProfileService:
             for (left, right), count in sorted(pairs.items(), key=lambda row: (-row[1], row[0]))[:80]
             if count >= 2 and left in node_ids and right in node_ids
         )
-        return RationaleGraphResponse(nodes=tuple(nodes), edges=edges)
+        return RationaleGraphResponse(nodes=tuple(nodes), edges=edges,
+            evidence_status=self.dossier_evidence.status if self.dossier_evidence else None,
+            evidence_note=self.dossier_evidence.note if self.dossier_evidence else None)

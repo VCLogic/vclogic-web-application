@@ -164,6 +164,8 @@ class RationaleGraphResponse(PublicModel):
     )
     nodes: tuple[RationaleNodeView, ...]
     edges: tuple[RationaleEdgeView, ...]
+    evidence_status: Literal["available", "not_prepared", "invalid"] | None = None
+    evidence_note: str | None = None
 
 
 class AssessmentView(PublicModel):

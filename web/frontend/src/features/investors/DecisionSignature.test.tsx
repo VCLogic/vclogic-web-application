@@ -72,3 +72,21 @@ it("keeps unavailable recurrence explicitly unknown", () => {
   expect(product).toHaveTextContent("Recurrence unavailable");
   expect(product).not.toHaveTextContent("0 observations");
 });
+
+
+it.each(["not_prepared", "invalid"] as const)("explains %s historical evidence and points to the source library", (evidence_status) => {
+  const evidence_note = evidence_status === "invalid"
+    ? "The imported historical evidence could not be verified."
+    : "Historical rationale evidence has not been prepared for this investor version.";
+  render(<DecisionSignature graph={{ nodes: [], edges: [], evidence_status, evidence_note }} onFindEvidence={vi.fn()} />);
+  expect(screen.getByText(evidence_note)).toBeVisible();
+  expect(screen.queryByText("No recurring decision patterns are available for this profile.")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Explore the Investment Memory below" })).toHaveAttribute("href", "#investment-memory-title");
+});
+
+it("labels available history as reference evidence alongside its rationale patterns", () => {
+  const evidence_note = "Historical reference evidence; not calibration or current model weights.";
+  render(<DecisionSignature graph={{ ...graph, evidence_status: "available", evidence_note }} onFindEvidence={vi.fn()} />);
+  expect(screen.getByText(evidence_note)).toBeVisible();
+  expect(screen.getByRole("region", { name: "Creates conviction" })).toBeVisible();
+});

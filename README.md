@@ -164,3 +164,30 @@ are cached locally with source attribution; failed lookups are cached for one
 hour. If a portrait is unavailable, the portrait component displays initials and
 the investor remains usable. Portrait downloads have host, format, size, and time
 limits and do not run during the investor-list request.
+
+## Investor dossier evidence
+
+Runtime indexes make an investor executable; they do not contain the historical
+assessments used by the gallery's recurring rationales and the dossier's Decision
+Signature. To restore those views from an existing LangGraph workspace:
+
+```bash
+uv run python scripts/sync_investor_dossiers.py \
+  --source ../vc-digital-twins/langgraph-vc-clone-framework \
+  --target ../vclogic-vc-agentic-assessment --apply
+```
+
+Omit `--apply` to preview. The tool requires matching source and destination
+investor fingerprints and exports exact reference investigations with provenance
+and hashes. Existing differing or corrupt exports are backed up before replacement.
+The compact files live in `outputs/web-investors/profile-evidence/<slug>/<version>.json`.
+The application picks up new or repaired exports without restarting; reload the
+dossier page. Selecting another version does not reuse the previous version's data.
+
+These datasets restore descriptive historical profiles, not calibrated predictions
+for the active version. Historical executions may have used different inputs; the
+exports preserve that limitation. New investors without a historical dataset still
+show their full Investment Memory, with an explicit explanation in the Decision
+Signature. No historical assessments are invented from wiki excerpts. Onboarded
+profiles may fill blank firm/structured role fields from matching declared source
+metadata, while explicit registry values and signed inputs remain unchanged.
