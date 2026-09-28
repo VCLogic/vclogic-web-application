@@ -1,3 +1,4 @@
+import { MemoryRouter } from "react-router-dom";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -13,14 +14,17 @@ const settings: InvestorSettingsResponse = { investors: [{ vc_slug: "example", d
 ]}], discovery_errors: [] };
 function setup() {
   vi.spyOn(api, "investorSettings").mockResolvedValue(settings);
-  render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}, mutations:{retry:false}}})}><InvestorSettings/></QueryClientProvider>);
+  render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}, mutations:{retry:false}}})}><MemoryRouter><InvestorSettings/></MemoryRouter></QueryClientProvider>);
 }
 afterEach(()=>{cleanup();vi.restoreAllMocks()});
 it("saves one active version and the enabled choice", async()=>{
   const save = vi.spyOn(api,"updateInvestorSettings").mockResolvedValue(settings);
   setup(); const user=userEvent.setup();
   const form=await screen.findByRole("form",{name:"Example VC"});
+  expect(within(form).getByRole("link", {name:"View selected version specifications"})).toHaveAttribute("href", `/settings/investors/example/specifications?version=${first}`);
   await user.selectOptions(within(form).getByLabelText("Active version"), second);
+  expect(within(form).getByRole("link", {name:"View selected version specifications"})).toHaveAttribute("href", `/settings/investors/example/specifications?version=${second}`);
+  expect(save).not.toHaveBeenCalled();
   await user.click(within(form).getByRole("checkbox",{name:"Enabled for new assessments"}));
   await user.click(within(form).getByRole("button",{name:"Save changes"}));
   expect(save).toHaveBeenCalledWith("example",{enabled:false,active_version:second});
@@ -38,8 +42,9 @@ it("retains edits and offers retry after a failed save",async()=>{
 it("shows incomplete versions without allowing activation",async()=>{
   vi.spyOn(api,"investorSettings").mockResolvedValue({investors:[{...settings.investors[0], enabled:false, available:false, active_version:null,
     versions:[{...settings.investors[0].versions[0],ready:false,error:"Required indexes are missing."}]}],discovery_errors:[]});
-  render(<QueryClientProvider client={new QueryClient()}><InvestorSettings/></QueryClientProvider>);
+  render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><InvestorSettings/></MemoryRouter></QueryClientProvider>);
   expect(await screen.findByText("Required indexes are missing.")).toBeVisible();
+  expect(screen.getByRole("link", {name:"Inspect Original specifications"})).toHaveAttribute("href", `/settings/investors/example/specifications?version=${first}`);
   expect(screen.getByRole("option",{name:/Original/})).toBeDisabled();
   expect(screen.getByRole("checkbox")).toBeDisabled();
 });

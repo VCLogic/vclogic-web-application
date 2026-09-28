@@ -47,3 +47,17 @@ export interface InvestorSettingsResponse {
   investors: InvestorSetting[];
   discovery_errors: string[];
 }
+
+export interface InvestorSpecifications {
+  vc_slug: string;
+  display_name: string;
+  investor_version_id: string;
+  version_label: string;
+  enabled: boolean;
+  active: boolean;
+  ready: boolean;
+  error: string | null;
+  sections: { id: string; title: string; fields: { label: string; value: string | number | boolean | null | string[] }[] }[];
+  taxonomy: { label: string; definition: string | null; coarse_parent: string | null }[];
+  notes: string[];
+}

@@ -395,3 +395,34 @@ test("investor settings manages enabled state and one active version", async ({p
   expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
   await page.screenshot({path:testInfo.outputPath("investor-settings.png"),fullPage:true});
 });
+
+
+test("read-only investor specifications remain usable on small screens", async ({ page }) => {
+  const version = "a".repeat(64);
+  const writes: string[] = [];
+  await page.route("**/api/settings/investors/fixture/specifications?version=*", async route => {
+    if (route.request().method() !== "GET") writes.push(route.request().method());
+    await route.fulfill({json:{
+      vc_slug:"fixture", display_name:"Example investor", investor_version_id:version,
+      version_label:"Prepared version", enabled:false, active:false, ready:false,
+      error:"Required classifier artifacts are missing.",
+      notes:["These are prepared defaults, not a record of a completed assessment."],
+      sections:[{id:"assessment",title:"Assessment configuration",fields:[
+        {label:"Model",value:"provider/model-with-a-long-identifier-for-responsive-layout-checking"},
+        {label:"Evidence sources",value:["wiki/example/theses.md", "wiki/example/evidence/founder_team.md"]},
+        {label:"Classifier enabled",value:false},
+      ]}],
+      taxonomy:[{label:"founder_market_fit",definition:"Relevant founder experience in the target market.",coarse_parent:"Founder and team"}],
+    }});
+  });
+  await page.goto(`/settings/investors/fixture/specifications?version=${version}`);
+  await expect(page.getByRole("heading", {name:"Investor specifications",exact:true})).toBeVisible();
+  await expect(page.getByText("Disabled for new assessments", {exact:true})).toBeVisible();
+  await expect(page.getByText("Alternative version", {exact:true})).toBeVisible();
+  await expect(page.getByRole("heading", {name:"Assessment configuration"})).toBeVisible();
+  await page.getByText("Decision taxonomy (1 rationales)", {exact:true}).click();
+  await expect(page.getByText("Relevant founder experience in the target market.", {exact:true})).toBeVisible();
+  expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
+  await expect(page.getByRole("button", {name:"Save changes"})).toHaveCount(0);
+  expect(writes).toEqual([]);
+});

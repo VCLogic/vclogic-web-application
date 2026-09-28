@@ -27,6 +27,7 @@ from .models import (
 from .profiles import ProfileService
 from .investor_catalog import InvestorCatalog
 from .catalog_profiles import CatalogProfiles
+from .investor_specifications import specifications
 from vc_clone_graph.rehearsal_config import load_rehearsal_config
 from .service import RehearsalWebService
 
@@ -76,6 +77,13 @@ def create_app(
     @app.get("/api/settings/investors")
     def investor_settings():
         return catalog().settings()
+
+    @app.get("/api/settings/investors/{vc_slug}/specifications")
+    def investor_specifications(vc_slug: str, version: str | None = Query(default=None, pattern=r"^[0-9a-f]{64}$")):
+        try:
+            return specifications(catalog(), vc_slug, version)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post("/api/settings/investors/refresh")
     def refresh_investors():

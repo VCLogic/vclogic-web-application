@@ -277,3 +277,18 @@ def test_finishing_onboarding_activates_pending_vc_but_respects_explicit_disable
     assert state['enabled'] is (not explicitly_disabled)
     if not explicitly_disabled:
         assert state['active_version'] is not None
+
+
+def test_read_only_discovery_does_not_activate_new_versions_or_write_preferences(tmp_path):
+    bundle(tmp_path/'bundles'/'new-vc')
+    service = catalog(tmp_path)
+    observed = service.refresh(persist_preferences=False)
+    investor = observed['investors'][0]
+    assert investor['vc_slug'] == 'new-vc'
+    assert investor['active_version'] is None and investor['enabled'] is False
+    assert investor['versions'][0]['ready'] is True
+    assert not service.preferences_path.exists()
+    # A later normal discovery still performs the authorized onboarding default.
+    activated = service.settings()['investors'][0]
+    assert activated['active_version'] and activated['enabled']
+    assert service.preferences_path.exists()

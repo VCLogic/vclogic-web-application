@@ -1,4 +1,4 @@
-import type { InvestorSettingsResponse, CanonicalAssessment, CreateSessionInput, Graph, Investor, InvestorComparison, InvestorMatch, MemorySearchResponse, PitchProject, PitchProjectSummary, PitchVersion, Profile, RehearsalDepth, Session, SessionSummary } from "./types";
+import type { InvestorSpecifications, InvestorSettingsResponse, CanonicalAssessment, CreateSessionInput, Graph, Investor, InvestorComparison, InvestorMatch, MemorySearchResponse, PitchProject, PitchProjectSummary, PitchVersion, Profile, RehearsalDepth, Session, SessionSummary } from "./types";
 
 export class ApiError extends Error { constructor(public status:number, message:string, public code?:string){ super(message); } }
 
@@ -40,6 +40,7 @@ async function request<T>(path:string, init?:RequestInit):Promise<T>{
   return response.json() as Promise<T>;
 }
 export const api={
+  investorSpecifications:(slug:string,version?:string)=>request<InvestorSpecifications>(`/api/settings/investors/${encodeURIComponent(slug)}/specifications${version ? `?version=${encodeURIComponent(version)}` : ""}`),
   investorSettings:()=>request<InvestorSettingsResponse>("/api/settings/investors"),
   refreshInvestors:()=>request<InvestorSettingsResponse>("/api/settings/investors/refresh",{method:"POST"}),
   updateInvestorSettings:(slug:string,body:{enabled:boolean;active_version:string|null})=>request<InvestorSettingsResponse>(`/api/settings/investors/${encodeURIComponent(slug)}`,{method:"PUT",body:JSON.stringify(body)}),

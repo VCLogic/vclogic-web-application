@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
@@ -49,10 +50,11 @@ function InvestorRow({ investor, onSaved }: { investor: InvestorSetting; onSaved
           </option>)}
         </select>
       </label>
+      {selected && <p><Link to={`/settings/investors/${encodeURIComponent(investor.vc_slug)}/specifications?version=${encodeURIComponent(selected.version_id)}`}>View selected version specifications</Link></p>}
       {selected && <p className="setting-capabilities">{Object.entries(selected.capabilities).filter(([, available]) => available).map(([key]) => capabilities[key] || key).join(" · ") || "No assessment capabilities available"}</p>}
       {selected?.created_at && <p className="setting-date">Prepared {new Date(selected.created_at).toLocaleString()}</p>}
       {!selected && version && <p className="setting-problem">The selected version is missing. Restore it or select another ready version.</p>}
-      {investor.versions.filter(row => !row.ready).map(row => <p className="setting-problem" key={row.version_id}><strong>{row.label}: </strong>{row.error || "Finish onboarding before using this version."}</p>)}
+      {investor.versions.filter(row => !row.ready).map(row => <p className="setting-problem" key={row.version_id}><strong>{row.label}: </strong>{row.error || "Finish onboarding before using this version."} <Link to={`/settings/investors/${encodeURIComponent(investor.vc_slug)}/specifications?version=${encodeURIComponent(row.version_id)}`}>Inspect {row.label} specifications</Link></p>)}
       <div className="setting-save">
         <button className="button" type="submit" disabled={!dirty || save.isPending || (enabled && !selected?.ready)}>{save.isPending ? "Saving…" : "Save changes"}</button>
         {saved && <span role="status">Settings saved.</span>}
@@ -67,7 +69,7 @@ export function InvestorSettings() {
   const settings = useQuery({ queryKey: ["investor-settings"], queryFn: api.investorSettings, refetchInterval: 30_000 });
   const onSaved = (data: InvestorSettingsResponse) => {
     client.setQueryData(["investor-settings"], data);
-    for (const key of ["investors", "profile", "profile-graph"]) client.invalidateQueries({ queryKey: [key] });
+    for (const key of ["investors", "profile", "profile-graph", "investor-specifications"]) client.invalidateQueries({ queryKey: [key] });
   };
   const refresh = useMutation({ mutationFn: api.refreshInvestors, onSuccess: onSaved });
   return <section className="investor-settings">

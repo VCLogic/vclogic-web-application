@@ -191,3 +191,20 @@ show their full Investment Memory, with an explicit explanation in the Decision
 Signature. No historical assessments are invented from wiki excerpts. Onboarded
 profiles may fill blank firm/structured role fields from matching declared source
 metadata, while explicit registry values and signed inputs remain unchanged.
+
+## Investor configuration specifications
+
+Use **Settings → Investors → View selected version specifications**, or
+**View investor specifications** inside a dossier. The read-only page shows the
+selected version's identity, declared check tiers, complete configured taxonomy,
+capabilities, model/budget defaults, embeddings, retrieval, and rehearsal policy.
+Assessment and rehearsal configurations are shown separately. Disabled investors
+and incomplete versions can be inspected without activating them.
+
+These are prepared defaults. Live jobs bind their own paths and identities;
+rehearsal depth can reduce the question ceiling, and classifier availability is
+resolved at execution. Viewing specifications does not create a snapshot, run a
+provider, or change settings. Credential values and provider endpoint URLs are
+omitted. Source files are checked against the version's recorded hashes before
+being displayed. Regenerate prepared bundles through onboarding to change their
+configuration, then select the intended ready version in Settings.

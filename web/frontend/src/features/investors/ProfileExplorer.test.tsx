@@ -10,6 +10,7 @@ import { ProfileExplorer } from "./ProfileExplorer";
 const profile: Profile = {
   investor: {
     vc_slug: "charles",
+    investor_version_id: "a".repeat(64),
     display_name: "Charles Hudson-like Investor",
     firm: "Precursor Ventures",
     role: "Managing Partner",
@@ -87,6 +88,7 @@ describe("ProfileExplorer", () => {
     expect(await screen.findByRole("img", { name: "Charles Hudson portrait" })).toBeVisible();
     expect(screen.getByRole("link", { name: /photo: the pitch/i })).toBeVisible();
     expect(screen.getByText("Investor decision dossier")).toBeVisible();
+    expect(screen.getByRole("link", {name:"View investor specifications"})).toHaveAttribute("href", `/settings/investors/charles/specifications?version=${"a".repeat(64)}`);
     expect(screen.getByRole("heading", { name: "Decision Signature" })).toBeVisible();
     expect(screen.getByText("2 chapters")).toBeVisible();
     expect(screen.getByText("1 decision theme")).toBeVisible();

@@ -118,7 +118,7 @@ class InvestorCatalog:
         self._cache[registry] = (signature, row)
         return row
 
-    def refresh(self) -> dict:
+    def refresh(self, *, persist_preferences: bool = True) -> dict:
         with self._guard:
             versions: dict[str, dict[str, InvestorVersion]] = {}
             self._errors = []
@@ -159,7 +159,7 @@ class InvestorCatalog:
             preferences = self._preferences()
             changed = False
             for slug, candidates in versions.items():
-                if slug not in preferences or preferences[slug].get('automatic_pending', False):
+                if persist_preferences and (slug not in preferences or preferences[slug].get('automatic_pending', False)):
                     ready = [row.version_id for row in candidates.values() if row.ready]
                     installed = [row.version_id for row in candidates.values() if row.installed]
                     active = installed[0] if len(installed) == 1 else (ready[0] if len(ready) == 1 else None)
@@ -167,7 +167,8 @@ class InvestorCatalog:
                     changed = True
             if changed:
                 atomic_json(self.preferences_path, preferences)
-            self._last_refresh = monotonic()
+            if persist_preferences:
+                self._last_refresh = monotonic()
             return self._settings(preferences)
 
     def _settings(self, preferences: dict) -> dict:

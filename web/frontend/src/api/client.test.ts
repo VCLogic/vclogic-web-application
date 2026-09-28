@@ -31,3 +31,15 @@ it("turns FastAPI validation details into a readable API error", async () => {
     message: "Rehearsal depth: Extra inputs are not permitted",
   });
 });
+
+
+it("requests specifications for an explicit version or the active version", async () => {
+  const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response("{}", {status:200})));
+  vi.stubGlobal("fetch", fetch);
+  const version = "a".repeat(64);
+  await api.investorSpecifications("example vc", version);
+  expect(fetch.mock.calls[0][0]).toBe(`/api/settings/investors/example%20vc/specifications?version=${version}`);
+  await api.investorSpecifications("example");
+  expect(fetch.mock.calls[1][0]).toBe("/api/settings/investors/example/specifications");
+  expect(fetch.mock.calls[0][1].method).toBeUndefined();
+});
