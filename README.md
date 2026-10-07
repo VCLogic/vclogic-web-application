@@ -14,6 +14,42 @@ Investor profiles are simulations based on source evidence. They do not represen
 - **Manage investors:** automatically discover prepared onboarding bundles, enable or disable investors, and select one active version per investor.
 - **Inspect specifications:** view version-specific taxonomy, model and token settings, retrieval configuration, and rehearsal policies.
 
+## Dependencies across VCLogic repositories
+
+The [VCLogic organization](https://github.com/VCLogic) separates source collection, investor knowledge, onboarding, assessment execution, and the web interface:
+
+| Repository | Responsibility | Relationship to this application |
+| --- | --- | --- |
+| [vclogic-vc-trace-collector](https://github.com/VCLogic/vclogic-vc-trace-collector) | Collects investor public sources, transcripts, identity metadata, and provenance. | **Upstream data producer.** Its investor exports feed investment-memory generation; the web app does not import or run the collector. |
+| [vclogic-vc-investment-memory](https://github.com/VCLogic/vclogic-vc-investment-memory) | Turns collected investor material into a cited investment wiki. | **Upstream knowledge producer.** Its generated wiki is an onboarding input and supplies the Investment Memory content shown in dossiers. It is a package dependency of onboarding, not a direct dependency of the web app. |
+| [vclogic-vc-inverstor-onboarding](https://github.com/VCLogic/vclogic-vc-inverstor-onboarding) | Prepares and validates investor bundles containing identity, wiki assets, indexes, and configurations; can collect historical Pitch Show evidence. | **Optional bundle-producing integration.** The web app discovers prepared bundles through the sibling `bundles/` directory or `--investor-bundles`. Onboarding itself depends on the investment-memory and assessment packages. |
+| [vclogic-vc-agentic-assessment](https://github.com/VCLogic/vclogic-vc-agentic-assessment) | Owns assessment and rehearsal execution, retrieval formats, validators, and runtime artifacts. | **Required direct Python dependency:** `vclogic-vc-agentic-assessment>=0.1.0,<0.2`, imported as `vc_clone_graph`. The web app uses its configured workspace for investor inputs and execution outputs. |
+
+```mermaid
+flowchart TD
+    C[Trace collector] -->|Investor source export| M[Investment memory]
+    M -->|Cited investor wiki| O[Investor onboarding]
+    O -->|Prepared investor bundles| W[Web application]
+    W -->|Assessment and rehearsal calls| A[Assessment engine]
+    A -->|Results and runtime artifacts| W
+```
+
+These arrows describe data and execution flow. The web app invokes the assessment engine as a Python package in its own backend process; a separately running assessment HTTP service is not required. The web app does not automatically run collection, wiki generation, or onboarding.
+
+**To run with existing investor assets:** install this web repository and the assessment engine, then point to a prepared assessment workspace. You do not need to rerun the upstream repositories. Additional prepared bundles can live anywhere accessible through `--investor-bundles`.
+
+**To prepare a new investor from source material:** use trace collector → investment memory → onboarding, then let the web app discover the resulting bundle and choose its active version in Settings. Follow each repository's README for its own dependencies and preparation commands. Cloning repositories alone does not generate investor data or indexes.
+
+The onboarding repository's GitHub name currently contains `inverstor`, but its package and default local directory use `investor`. Clone it with the expected local name, alongside the assessment and investment-memory checkouts:
+
+```bash
+git clone https://github.com/VCLogic/vclogic-vc-inverstor-onboarding.git vclogic-vc-investor-onboarding
+```
+
+The web app's editable engine dependency resolves to `../vclogic-vc-agentic-assessment` relative to this checkout. Automatic bundle discovery resolves to `vclogic-vc-investor-onboarding/bundles` beside the **configured assessment workspace**. Explicit `--investor-bundles` paths override that default.
+
+The original `vc-digital-twins/langgraph-vc-clone-framework` workspace is only a legacy migration source; it is not required to run this application once the needed assets have been migrated.
+
 ## Requirements
 
 - Python **3.11–3.13** and [uv](https://docs.astral.sh/uv/).
