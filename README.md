@@ -1,55 +1,93 @@
-# VCLogic web application
+<img src="web/frontend/public/favicon.svg" alt="VCLogic logo" width="80" height="80">
 
-React frontend and FastAPI API for founder pitch assessment, investor comparison, and rehearsal. The assessment engine is maintained in [vclogic-vc-agentic-assessment](https://github.com/VCLogic/vclogic-vc-agentic-assessment).
+# VCLogic Web Application
 
-## Local setup
+A web workspace for exploring investor decision profiles, assessing founder pitches, comparing investor fit, and rehearsing investor questions. Built with **React, TypeScript, and FastAPI**, using the [VCLogic assessment engine](https://github.com/VCLogic/vclogic-vc-agentic-assessment) for execution.
+
+Investor profiles are simulations based on source evidence. They do not represent the real investors or imply endorsement.
+
+## What you can do
+
+- **Explore investor dossiers:** decision signatures, recurring rationales, full Investment Memory chapters, and source-linked evidence.
+- **Save and assess pitches:** maintain pitch versions, compare assessments across investors, and inspect supporting evidence.
+- **Rehearse questions:** start Quick, Standard, or Deep sessions from assessments and review completed conversations.
+- **Manage investors:** automatically discover prepared onboarding bundles, enable or disable investors, and select one active version per investor.
+- **Inspect specifications:** view version-specific taxonomy, model and token settings, retrieval configuration, and rehearsal policies.
+
+## Requirements
+
+- Python **3.11–3.13** and [uv](https://docs.astral.sh/uv/).
+- Node.js **22.12+** and npm for the frontend build.
+- A sibling checkout of `vclogic-vc-agentic-assessment`, with the required investor inputs, configuration, and indexes prepared.
+- Provider credentials and embedding resources required by your chosen engine configuration for live assessments and rehearsals.
+
+The web repository contains application code. It does **not** ship the complete investor runtime library, historical assessments, credentials, or downloaded models. Follow the [assessment engine setup](https://github.com/VCLogic/vclogic-vc-agentic-assessment#readme) to prepare those resources. Existing LangGraph workspaces can use the migration instructions below.
+
+## Quick start
 
 Clone both repositories into the same parent directory:
 
-```text
-workspace/
-  vclogic-vc-agentic-assessment/
-  vclogic-web-application/
-```
-
-From this repository (Python 3.11–3.13, uv, and Node.js required):
-
 ```bash
-uv sync --extra dev
+git clone https://github.com/VCLogic/vclogic-vc-agentic-assessment.git
+git clone https://github.com/VCLogic/vclogic-web-application.git
+cd vclogic-web-application
+uv sync --extra dev --extra embeddings
 cd web/frontend
 npm ci
 npm run build
 cd ../..
-uv run vc-clone-web --pipeline-workspace ../vclogic-vc-agentic-assessment
 ```
 
-Open http://127.0.0.1:8000. Startup validates the installed investor indexes before accepting requests; with a full investor library, wait for `Application startup complete` in the terminal. The API runs locally by default. The default config is `configs/rehearsal-charles-v41-grounded.toml` inside the pipeline workspace. `--config` paths are relative to that workspace; `--static-root` paths are relative to the application checkout. Set provider keys in the environment and prepare the pipeline configuration/indexes before requesting a live assessment; see its README. For grounded semantic retrieval, install the engine's embeddings extra with `uv sync --extra dev --extra embeddings`.
+Expected layout:
 
-The uv source override installs the sibling pipeline in editable mode. The built application wheel declares `vclogic-vc-agentic-assessment` as a dependency; deployments must supply a compatible engine wheel or configure a package source. No published package is assumed.
+```text
+workspace/
+├── vclogic-web-application/
+├── vclogic-vc-agentic-assessment/       # Configuration, inputs, indexes, outputs
+└── vclogic-vc-investor-onboarding/     # Optional; automatically discovered
+    └── bundles/
+```
 
-## Verify
+After preparing the engine workspace, launch from the web repository root:
 
 ```bash
-uv run pytest -q
-cd web/frontend
-npm test -- --run
-npm run build
-# Smoke checks that work without archived project/session data:
-npm run test:e2e -- --grep "brand lockup|gallery is portrait|active rehearsal"
+uv run --extra embeddings vc-clone-web --pipeline-workspace ../vclogic-vc-agentic-assessment --host 0.0.0.0 --allow-remote --port 8001
 ```
 
-Web integration tests read investor reference data from the sibling pipeline. Set `VCLOGIC_PIPELINE_WORKSPACE` to use another checkout. Historical session checks require their archived outputs and skip when absent.
+Open **http://localhost:8001** on the server, or **http://<server-ip>:8001** from another machine. Keep the workspace path on one line. Wait for `Application startup complete`; startup validates investor indexes before accepting requests.
 
-## Ownership
+This is a workspace-wide, single-user application without per-user access control. Use the remote binding on a trusted network. For loopback-only use:
 
-- `src/vclogic_web`: API routes, jobs, presentation models, project/session services.
-- `web/frontend`: React application and browser tests.
-- `tests/web`: API and service checks.
-- `scripts/sync_investor_portraits.py`: frontend portrait tooling.
+```bash
+uv run --extra embeddings vc-clone-web --pipeline-workspace ../vclogic-vc-agentic-assessment --port 8001
+```
 
-The engine owns assessment/rehearsal execution and investor data. API jobs currently store runtime artifacts beneath the configured pipeline workspace output directory. No process-wide directory change is needed to connect the repositories. Secrets, dependencies, generated assets, and runtime outputs are excluded from Git.
+The default grounded configuration uses `OPENROUTER_API_KEY` from the process environment. Configure credentials before launching live assessments; browsing specifications and investor discovery do not call a model provider. The embeddings extra can be omitted when your configuration does not require it.
 
-Extracted from the current working files in `vc-digital-twins/langgraph-vc-clone-framework`; the original source remains intact.
+### Launch configuration
+
+| Option | Default / behavior |
+| --- | --- |
+| `--pipeline-workspace` | Required path to the assessment workspace. |
+| `--config` | `configs/rehearsal-charles-v41-grounded.toml`, relative to the assessment workspace. |
+| `--host` | `127.0.0.1`; non-loopback addresses require `--allow-remote`. |
+| `--port` | `8000`; the quick start uses `8001`. |
+| `--investor-bundles` | Repeatable bundle roots; replaces the default sibling bundle location. |
+| `--static-root` | `web/frontend/dist`, relative to the current working directory. |
+
+Run `uv run vc-clone-web --help` for CLI usage. The API exposes `/api/health` and interactive documentation at `/docs`.
+
+The uv configuration installs the sibling engine in editable mode. The application wheel declares an engine dependency; deployments must supply a compatible engine wheel or package source and the built frontend separately. No published engine package is assumed.
+
+## Investor workflow
+
+1. Prepare or onboard an investor in the assessment/onboarding projects.
+2. Open **Settings → Investors** and refresh discovery if needed.
+3. Enable the investor and select one ready version. A new investor with exactly one ready version is enabled automatically.
+4. Open its dossier to explore evidence, or **View selected version specifications** to inspect its configuration.
+5. Save a pitch, request an assessment, and start a rehearsal when ready.
+
+The application discovers prepared assets; it does not run onboarding or build missing indexes through the browser. Historical sessions retain their original investor version when you change the active selection.
 
 ## Investor discovery and versions
 
@@ -134,21 +172,6 @@ assessment workspace. Run migrations while the application is stopped; the
 script checks for changed settings but does not share a transaction lock with
 running application processes.
 
-## Network access
-
-To listen on all network interfaces, choose an unused port and explicitly allow
-remote access:
-
-```bash
-uv run --extra embeddings vc-clone-web \
-  --pipeline-workspace ../vclogic-vc-agentic-assessment \
-  --host 0.0.0.0 --allow-remote --port 8001
-```
-
-Open `http://<server-ip>:8001`. After changing Python code, restart the server.
-After frontend changes, run `npm run build` in `web/frontend` and refresh the
-browser.
-
 ## Automatic investor portraits
 
 The six existing attributed portraits remain bundled with the frontend. For other
@@ -208,3 +231,53 @@ provider, or change settings. Credential values and provider endpoint URLs are
 omitted. Source files are checked against the version's recorded hashes before
 being displayed. Regenerate prepared bundles through onboarding to change their
 configuration, then select the intended ready version in Settings.
+
+## Development and verification
+
+Run backend and frontend checks from this repository:
+
+```bash
+uv run --extra dev pytest -q
+cd web/frontend
+npm test -- --run
+npm run build
+```
+
+For frontend development, run the API on its default port `8000`, then run `npm run dev` in `web/frontend`. Vite proxies `/api` to `http://127.0.0.1:8000`; adjust `vite.config.ts` if using another backend port.
+
+Browser smoke tests use Playwright with the Chrome channel. With Chrome installed and the frontend built:
+
+```bash
+cd web/frontend
+npm run test:e2e -- --grep "brand lockup|gallery is portrait|active rehearsal|specifications"
+```
+
+Playwright starts or reuses an API at `127.0.0.1:8766` using the sibling assessment workspace. Backend integration tests use the sibling workspace too; set `VCLOGIC_PIPELINE_WORKSPACE` to override it for those tests. Historical session tests skip when archived canary outputs are absent. Tests using mocked providers do not validate real provider credentials or model quality.
+
+After Python changes, restart the application. After frontend changes, rebuild `web/frontend` and refresh the browser.
+
+## Troubleshooting
+
+| Symptom | Action |
+| --- | --- |
+| `Address already in use` | Choose another port with `--port`, or stop the existing application you intend to replace. |
+| Cannot load rehearsal configuration | Check the complete `--pipeline-workspace` path and that the selected config exists beneath it. Do not split a path across shell lines. |
+| `compiled frontend not found` | Run `npm ci` and `npm run build` in `web/frontend`, then launch from the repository root. |
+| Investors missing or unavailable | Check **Settings → Investors**, bundle roots, enabled state, selected version, and index readiness. Run the legacy migration if needed. |
+| Dossier has no historical Decision Signature | Restore matching historical dossier evidence; runtime indexes alone do not provide it. New investors may legitimately have no historical dataset. |
+| Portrait displays initials | Check access to The Pitch and its image CDN. Failed lookups are cached for one hour. |
+| Live assessment fails | Check engine configuration, provider credentials, and embedding/index availability. |
+
+## Repository guide
+
+| Path | Purpose |
+| --- | --- |
+| `src/vclogic_web/` | FastAPI routes, jobs, investor catalog, version binding, and presentation services. |
+| `web/frontend/` | React application, frontend tests, and browser checks. |
+| `tests/web/` | Backend API and service tests. |
+| `scripts/` | Scoped legacy migration, dossier export, and portrait utilities. |
+| `docs/` | Extraction notes, product reference, and implementation records. |
+
+The engine owns execution and investor data; this repository owns the web interface and API integration. Runtime artifacts live in the configured assessment workspace. Back up its project/session outputs together with `outputs/web-investors` to preserve settings, retained versions, and dossier evidence. Secrets, dependencies, build products, and runtime outputs are excluded from Git.
+
+Further context: [extraction notes](docs/EXTRACTION.md), [historical web reference](docs/WEB_REFERENCE.md), [product notes](PRODUCT.md), and [design notes](DESIGN.md). This application was extracted from `vc-digital-twins/langgraph-vc-clone-framework`.
