@@ -21,7 +21,7 @@ The [VCLogic organization](https://github.com/VCLogic) separates source collecti
 | Repository | Responsibility | Relationship to this application |
 | --- | --- | --- |
 | [vclogic-vc-trace-collector](https://github.com/VCLogic/vclogic-vc-trace-collector) | Collects investor public sources, transcripts, identity metadata, and provenance. | **Upstream data producer.** Its investor exports feed investment-memory generation; the web app does not import or run the collector. |
-| [vclogic-vc-investment-memory](https://github.com/VCLogic/vclogic-vc-investment-memory) | Turns collected investor material into a cited investment wiki. | **Upstream knowledge producer.** Its generated wiki is an onboarding input and supplies the Investment Memory content shown in dossiers. It is a package dependency of onboarding, not a direct dependency of the web app. |
+| [vclogic-vc-investment-memory](https://github.com/VCLogic/vclogic-vc-investment-memory) | Turns collected investor material into a cited investment wiki. | **Live content integration.** The web app reads its generated `wiki/` files directly and refreshes changed dossiers automatically. Its wikis also feed onboarding for assessment preparation. The web app does not import its Python package. |
 | [vclogic-vc-inverstor-onboarding](https://github.com/VCLogic/vclogic-vc-inverstor-onboarding) | Prepares and validates investor bundles containing identity, wiki assets, indexes, and configurations; can collect historical Pitch Show evidence. | **Optional bundle-producing integration.** The web app discovers prepared bundles through the sibling `bundles/` directory or `--investor-bundles`. Onboarding itself depends on the investment-memory and assessment packages. |
 | [vclogic-vc-agentic-assessment](https://github.com/VCLogic/vclogic-vc-agentic-assessment) | Owns assessment and rehearsal execution, retrieval formats, validators, and runtime artifacts. | **Required direct Python dependency:** `vclogic-vc-agentic-assessment>=0.1.0,<0.2`, imported as `vc_clone_graph`. The web app uses its configured workspace for investor inputs and execution outputs. |
 
@@ -90,7 +90,7 @@ After preparing the engine workspace, launch from the web repository root:
 uv run --extra embeddings vc-clone-web --pipeline-workspace ../vclogic-vc-agentic-assessment --host 0.0.0.0 --allow-remote --port 8001
 ```
 
-Open **http://localhost:8001** on the server, or **http://<server-ip>:8001** from another machine. Keep the workspace path on one line. Wait for `Application startup complete`; startup validates investor indexes before accepting requests.
+Open **http://localhost:8001** on the server, or **http://<server-ip>:8001** from another machine. Keep the workspace path on one line. Wiki browsing is available as soon as the server starts. Assessment indexes are validated in the background; Settings shows their readiness.
 
 This is a workspace-wide, single-user application without per-user access control. Use the remote binding on a trusted network. For loopback-only use:
 
@@ -123,7 +123,47 @@ The uv configuration installs the sibling engine in editable mode. The applicati
 4. Open its dossier to explore evidence, or **View selected version specifications** to inspect its configuration.
 5. Save a pitch, request an assessment, and start a rehearsal when ready.
 
-The application discovers prepared assets; it does not run onboarding or build missing indexes through the browser. Historical sessions retain their original investor version when you change the active selection.
+The application discovers current generated wikis for reading and prepared bundles for assessment. It does not run onboarding or build missing indexes through the browser. Historical sessions retain their original investor version when you change the active selection.
+
+## Live Investment Memory integration
+
+The gallery and dossiers read generated wikis directly from the sibling
+`vclogic-vc-investment-memory/wiki` directory and this application's `wiki/`
+directory. A new `wiki/<investor-slug>/` appears automatically; archived folders
+are excluded. Each wiki must have a matching `_manifest.json` identity and
+nonempty `persona.md`, `theses.md`, and `portfolio_and_constraints.md`. A supplied
+`validation.json` must report success. Labelled rationale data comes from
+`evidence.json`; contextual citations come from `context.json`. Missing evidence
+is reported rather than replaced with invented decisions.
+
+To use other roots, repeat `--investment-memory` (explicit roots replace the
+defaults):
+
+```bash
+uv run --extra embeddings vc-clone-web --pipeline-workspace ../vclogic-vc-agentic-assessment --investment-memory ../vclogic-vc-investment-memory/wiki --host 0.0.0.0 --allow-remote --port 8001
+```
+
+The reader checks file signatures and reloads edited wikis without a restart.
+Open gallery and dossier pages refresh every 30 seconds. It shows the current
+policy, thesis entries, cited evidence, source counts, and per-investor rationale
+frequencies. These frequencies count evidence excerpts, **not historical
+investment decisions or calibrated model confidence**. Associations count shared
+sources. Earlier assessment patterns remain in a separate disclosure for the
+original investors.
+
+Full chapter bodies load only when opened. Clicking an `ev` or `ctx` citation
+opens the matching evidence search; results preserve quotations, interpretations,
+support labels, and original source links where supplied in `sources.md`.
+Browsing uses cached wiki data instead of repeatedly validating large assessment
+indexes. Assessment-catalog validation runs in the background.
+
+**Reading a current wiki and assessing with it are separate readiness checks.**
+If the selected bundle's wiki hashes differ, the current content remains readable
+but the web app does not advertise that bundle as ready for an assessment using
+this memory. Rebuild/install the bundle with the onboarding project and select
+its ready version in Settings. The application does not silently alter prior
+session inputs, activate a different version, or claim that stale indexes were
+updated. Disabled investor choices remain respected.
 
 ## Investor discovery and versions
 
@@ -210,8 +250,12 @@ running application processes.
 
 ## Automatic investor portraits
 
-The six existing attributed portraits remain bundled with the frontend. For other
-investors, opening a page that displays their portrait automatically resolves a
+Existing attributed portraits under `web/frontend/public/investors/` are local
+assets excluded by `.gitignore`. They remain available in this checkout and are
+copied into the frontend build. A fresh clone does not include these assets;
+restore that directory from your local backup before building if you want the
+legacy portraits. Without them those profiles display initials and remain usable.
+For other investors, opening a page that displays their portrait automatically resolves a
 matching investor profile on The Pitch and downloads the image to
 `outputs/web-investors/portraits` in the assessment workspace. This requires
 outbound HTTPS access to `www.thepitch.show` and `cdn.sanity.io`, but does not
@@ -316,4 +360,72 @@ After Python changes, restart the application. After frontend changes, rebuild `
 
 The engine owns execution and investor data; this repository owns the web interface and API integration. Runtime artifacts live in the configured assessment workspace. Back up its project/session outputs together with `outputs/web-investors` to preserve settings, retained versions, and dossier evidence. Secrets, dependencies, build products, and runtime outputs are excluded from Git.
 
+### Keep investor content local
+
+The following directories are ignored without deleting their files or changing
+how the application reads them:
+
+| Local path | Content |
+| --- | --- |
+| `wiki/` | Generated Investment Memory chapters, evidence, and source records; automatically discovered. |
+| `inputs/` | Local investor registries, source inputs, and indexes. |
+| `bundles/` | Prepared onboarding bundles; pass `--investor-bundles ./bundles` to discover this location. |
+| `web/frontend/public/investors/` | Portrait images and their provenance manifest. |
+| `outputs/` | Runtime results, settings, portrait caches, and dossier exports (already ignored). |
+
+The usual sibling investment-memory and assessment workspaces remain outside
+this repository. Keep backups of these directories: Git will not restore local
+data in a fresh clone. Ignoring them does not prevent the running app from
+displaying their contents to its users.
+
+**Existing tracked portraits require a one-time index cleanup.** The audit found
+six JPEGs and `portrait-manifest.json` already tracked. `.gitignore` alone cannot
+untrack them. From the repository root, run:
+
+```bash
+git rm -r --cached -- web/frontend/public/investors
+git add .gitignore README.md
+git diff --cached --stat
+git commit -m "Keep investor content local and ignore data directories"
+```
+
+`--cached` preserves the files on disk, so existing local builds still work.
+The index cleanup has been verified in this checkout: all seven removals are
+staged, and the local files remain present. Commit the staged removals together
+with these ignore rules. This removes the files from future revisions, not
+from previous commits. No Git history rewrite is performed.
+
+These rules exclude investor **data files**, not application source files.
+Legacy identity mappings, portrait source metadata, named test cases, and
+historical documentation still contain VC names. Removing every named reference
+would require migrating that compatibility configuration and anonymizing the
+tests and documentation; ignoring those source files would break reproducible
+installs and tests.
+
 Further context: [extraction notes](docs/EXTRACTION.md), [historical web reference](docs/WEB_REFERENCE.md), [product notes](PRODUCT.md), and [design notes](DESIGN.md). This application was extracted from `vc-digital-twins/langgraph-vc-clone-framework`.
+
+### Refreshed memories and earlier dossiers
+
+The gallery shows six investor rows at a time, with vertical scrolling for the
+remaining profiles. Enabled investors whose selected version was replaced remain
+inspectable when there is one unambiguous ready replacement (preferring the
+installed version). Their assessment action links to Settings until a ready
+version is explicitly selected. Assessment selectors still include only active,
+ready versions; viewing a replacement does not change saved settings.
+
+For the six original LangGraph investors, verified dossier exports remain
+available as **earlier reference history** after an IM refresh. The UI identifies
+the source version and does not treat historical rationale frequencies as
+calibration of the refreshed IM. An exact-version export takes precedence;
+invalid exact exports are reported, and conflicting earlier exports are not
+combined. Phil Nadel's newer `phil-nadel-forefront-venture-partners` identity has
+an explicit link to the original `phil-nadel` reference history.
+
+When the original `vc-digital-twins/langgraph-vc-clone-framework` checkout is
+present beside the assessment workspace, the dossier also exposes its complete
+Markdown chapters under **Earlier LangGraph Investment Memory**. This is a
+read-only reference to that checkout. Current Investment Memory and its search
+continue to use the displayed prepared version; historical chapters are not
+added to current assessment inputs. Keep that checkout available to retain this
+reference view, along with `outputs/web-investors/profile-evidence` for the
+imported rationale history.
