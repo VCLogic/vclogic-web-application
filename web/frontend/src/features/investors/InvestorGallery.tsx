@@ -17,7 +17,6 @@ export function InvestorGallery() {
   if (isPending) return <div className="dark-state">Preparing investor profiles…</div>;
   if (error) return <p className="error">Unable to load profiles: {error.message}</p>;
   const selected = data?.investors.find(investor => investor.vc_slug === selectedSlug) ?? data?.investors[0];
-  const hasDecisionInfluences = selected && [selected.recurring_positive_rationales, selected.recurring_negative_rationales, selected.recurring_unresolved_rationales].some(items => items?.length);
 
   return <section className="investor-selection">
     <div className="selection-hero">
@@ -42,20 +41,26 @@ export function InvestorGallery() {
       </nav>
       {selected && <article className="investor-preview" aria-live="polite">
         <div className="preview-portrait"><InvestorPortrait name={selected.display_name} src={selected.portrait_path} alt={selected.portrait_alt}/><div className="portrait-badge"><SimulationBadge/></div></div>
-        <div key={selected.vc_slug} className="preview-body" tabIndex={0} role="region" aria-label="Selected investor details">
-          <p className="preview-kicker">{selected.role} · {selected.firm}</p><h3>{selected.display_name}</h3>
-          {selected.selection_note && <p role="status">{selected.selection_note}</p>}
-          <p className="investor-summary">{selected.summary || "A source-linked representation of this investor’s observable investment approach."}</p>
-          {hasDecisionInfluences && <div className="investor-influences"><h4>{selected.evidence_basis === "wiki" ? "Rationales in the current wiki" : "Frequently observed rationales"}</h4><p className="recurrence-note">{selected.evidence_basis === "wiki" ? "Bar length shows evidence-excerpt frequency, not investment decisions or causal importance." : "Bar length shows frequency in the available record, not causal importance."}</p>
-            {selected.evidence_note && <p className="recurrence-note">{selected.evidence_note}</p>}
+        <div className="preview-details">
+          {data?.investors.map(investor => {
+            const hasDecisionInfluences = [investor.recurring_positive_rationales, investor.recurring_negative_rationales, investor.recurring_unresolved_rationales].some(items => items?.length);
+            return (
+        <div key={investor.vc_slug} className="preview-body" inert={investor.vc_slug !== selected.vc_slug} aria-hidden={investor.vc_slug !== selected.vc_slug} role="region" aria-label="Selected investor details">
+          <p className="preview-kicker">{investor.role} · {investor.firm}</p><h3>{investor.display_name}</h3>
+          {investor.selection_note && <p role="status">{investor.selection_note}</p>}
+          <p className="investor-summary">{investor.summary || "A source-linked representation of this investor’s observable investment approach."}</p>
+          {hasDecisionInfluences && <div className="investor-influences"><h4>{investor.evidence_basis === "wiki" ? "Rationales in the current wiki" : "Frequently observed rationales"}</h4><p className="recurrence-note">{investor.evidence_basis === "wiki" ? "Bar length shows evidence-excerpt frequency, not investment decisions or causal importance." : "Bar length shows frequency in the available record, not causal importance."}</p>
+            {investor.evidence_note && <p className="recurrence-note">{investor.evidence_note}</p>}
             <DecisionInfluenceSummary
               dark
-              positive={selected.recurring_positive_rationales} negative={selected.recurring_negative_rationales} unresolved={selected.recurring_unresolved_rationales}
-              positiveCounts={selected.recurring_positive_counts} negativeCounts={selected.recurring_negative_counts} unresolvedCounts={selected.recurring_unresolved_counts}
+              positive={investor.recurring_positive_rationales} negative={investor.recurring_negative_rationales} unresolved={investor.recurring_unresolved_rationales}
+              positiveCounts={investor.recurring_positive_counts} negativeCounts={investor.recurring_negative_counts} unresolvedCounts={investor.recurring_unresolved_counts}
             />
           </div>}
-          {!hasDecisionInfluences && selected.evidence_note && <p className="recurrence-note">{selected.evidence_note}</p>}
-          <div className="card-actions">{selected.start_available ? <Link className="button light" to={`/assess/${selected.vc_slug}`}>Assess your pitch <ArrowRight size={16}/></Link> : <Link className="button light" to="/settings/investors">Choose active version <ArrowRight size={16}/></Link>}<Link className="profile-link" to={`/profiles/${selected.vc_slug}`}><BookOpen size={15}/> Explore decision dossier</Link></div>
+          {!hasDecisionInfluences && investor.evidence_note && <p className="recurrence-note">{investor.evidence_note}</p>}
+          <div className="card-actions">{investor.start_available ? <Link className="button light" to={`/assess/${investor.vc_slug}`}>Assess your pitch <ArrowRight size={16}/></Link> : <Link className="button light" to="/settings/investors">Choose active version <ArrowRight size={16}/></Link>}<Link className="profile-link" to={`/profiles/${investor.vc_slug}`}><BookOpen size={15}/> Explore decision dossier</Link></div>
+        </div>);
+          })}
         </div>
       </article>}
     </div>

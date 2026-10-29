@@ -15,15 +15,20 @@
 .investor-register-list small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .investor-preview .recurrence-note{overflow-wrap:anywhere}
 
-/* Keep adjacent columns aligned; long dossiers scroll within the preview. */
+/* Overlapping detail panels size the row to the tallest profile without measurement. */
+.preview-details{min-width:0;display:grid}
+.preview-body{grid-area:1 / 1}
+.preview-body[aria-hidden=true]{visibility:hidden;pointer-events:none}
 @media(min-width:721px){
   .investor-register{min-height:0}
-  .investor-preview{height:calc(6 * var(--investor-row-height));min-height:0}
-  .preview-body{min-height:0;overflow-y:auto;scrollbar-gutter:stable;padding:28px}
-  .preview-body>*{flex-shrink:0}
-  .preview-body:focus-visible{outline:2px solid #a9c5ae;outline-offset:-3px}
+  .investor-register-list{height:0;min-height:100%;max-height:none;align-self:stretch;box-sizing:border-box}
+  .investor-preview{min-height:calc(6 * var(--investor-row-height))}
+  .preview-portrait{height:100%;align-self:stretch}
+  .preview-body{min-height:0;padding:28px}
 }
 @media(min-width:721px) and (max-width:1050px){
-  .investor-preview{grid-template-rows:200px minmax(0,1fr)}
-  .preview-portrait{height:200px}
+  .investor-preview{grid-template-rows:200px auto}
+}
+@media(max-width:720px){
+  .preview-body[aria-hidden=true]{display:none}
 }

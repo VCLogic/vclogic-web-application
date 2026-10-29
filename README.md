@@ -430,8 +430,11 @@ extracted from `vc-digital-twins/langgraph-vc-clone-framework`.
 
 ### Refreshed memories and earlier dossiers
 
-The gallery shows six investor rows at a time, with vertical scrolling for the
-remaining profiles. Enabled investors whose selected version was replaced remain
+On desktop and tablet, the gallery fits the tallest investor summary so all
+selected details are visible without an inner scrollbar. The investor list
+matches that height and scrolls through remaining profiles. Mobile retains a
+six-row list and displays the selected details in normal page flow.
+Enabled investors whose selected version was replaced remain
 inspectable when there is one unambiguous ready replacement (preferring the
 installed version). Their assessment action links to Settings until a ready
 version is explicitly selected. Assessment selectors still include only active,

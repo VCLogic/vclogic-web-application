@@ -143,7 +143,7 @@ test("investor gallery is portrait-led and responsive", async ({ page }) => {
   await expect(page.getByText("Investor-like simulation").first()).toBeVisible();
   await expect(page.locator(".investor-preview")).toBeVisible();
   // Fresh checkouts have no archived assessments; recurrence sections are optional.
-  await expect(page.locator(".investor-preview .investor-summary")).not.toBeEmpty();
+  await expect(page.locator(".preview-body[aria-hidden=false] .investor-summary")).not.toBeEmpty();
   const geometry = await galleryGeometry(page);
   expect(geometry.cardCount).toBeGreaterThan(0);
   expect(geometry.summaryCount).toBe(geometry.influenceSectionCount);
@@ -151,36 +151,37 @@ test("investor gallery is portrait-led and responsive", async ({ page }) => {
   expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
 });
 
-test("investor gallery columns align and long details remain scrollable", async ({ page }, testInfo) => {
+test("gallery fits the tallest VC without scrolling details or resizing on selection", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "desktop and tablet column geometry");
-  // Geometry needs the live gallery, not expensive assessment-index validation.
-  await page.route("**/api/settings/investors", route => route.fulfill({json:{investors:[]}}));
+  const investors = Array.from({length:19}, (_, index) => ({
+    vc_slug:`fixture-${index}`, display_name:`Investor ${index + 1}`, firm:"Example firm", role:"Partner",
+    disclosure:"Simulation", start_available:true, recurring_positive_rationales:[], recurring_negative_rationales:[],
+    summary:index === 18 ? 'Detailed investment criteria and source evidence. '.repeat(45) : 'Short profile.',
+  }));
+  await page.route(/\/api\/investors\?include_unavailable=true$/, route => route.fulfill({json:{investors}}));
   for (const width of [1347, 900]) {
     await page.setViewportSize({ width, height: 1000 });
-    await page.goto("/?screenshots=1");
+    await page.goto("/");
     const details = page.getByRole('region', {name:'Selected investor details'});
     await expect(details).toBeVisible();
     for (const size of ['16px', '24px']) {
       await page.locator('html').evaluate((element, size) => { element.style.fontSize = size; }, size);
+      const before = await page.locator('.investor-register').evaluate(el => el.getBoundingClientRect().height);
+      await page.getByRole('navigation', {name:'Investor profiles'}).getByRole('button', {name:/Investor 19/}).click();
       const geometry = await page.locator('.investor-register').evaluate(element => {
         const list = element.querySelector('.investor-register-list')!.getBoundingClientRect();
         const preview = element.querySelector('.investor-preview')!.getBoundingClientRect();
-        const body = element.querySelector<HTMLElement>('.preview-body')!;
-        const portrait = element.querySelector('.preview-portrait')!.getBoundingClientRect();
-        return {listBottom:list.bottom, previewBottom:preview.bottom, bodyBottom:body.getBoundingClientRect().bottom,
-          portraitBottom:portrait.bottom, overflow:getComputedStyle(body).overflowY,
-          scrollHeight:body.scrollHeight, height:body.clientHeight};
+        const body = element.querySelector<HTMLElement>('.preview-body[aria-hidden=false]')!;
+        return {height:element.getBoundingClientRect().height,listBottom:list.bottom, previewBottom:preview.bottom,
+          overflow:getComputedStyle(body).overflowY, scrollHeight:body.scrollHeight, bodyHeight:body.clientHeight};
       });
+      expect(geometry.height).toBeCloseTo(before, 0);
       expect(geometry.previewBottom).toBeCloseTo(geometry.listBottom, 0);
-      expect(geometry.bodyBottom).toBeCloseTo(geometry.listBottom, 0);
-      expect(geometry.portraitBottom).toBeLessThanOrEqual(geometry.listBottom + 1);
-      expect(geometry.overflow).toBe('auto');
-      expect(geometry.scrollHeight).toBeGreaterThan(geometry.height);
-      await details.scrollIntoViewIfNeeded();
-      await details.focus();
-      await page.keyboard.press('End');
-      await expect(details.getByRole('link', {name:/Explore decision dossier/})).toBeInViewport();
+      expect(geometry.overflow).toBe('visible');
+      expect(geometry.scrollHeight).toBeLessThanOrEqual(geometry.bodyHeight + 1);
+      await expect(details.getByRole('link', {name:/Explore decision dossier/})).toBeVisible();
       expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
+      await page.getByRole('navigation', {name:'Investor profiles'}).getByRole('button', {name:/^01 Investor 1 /}).click();
     }
   }
 });
@@ -429,7 +430,7 @@ test("read-only investor specifications remain usable on small screens", async (
   expect(writes).toEqual([]);
 });
 
-test("investor register shows six rows and scrolls to the remaining profiles", async ({page}) => {
+test("investor register fits the profile and scrolls to remaining investors", async ({page}, testInfo) => {
   const investors = Array.from({length:19}, (_, index) => ({
     vc_slug:`fixture-${index}`, display_name:`Investor ${index + 1}`, firm:"Example firm", role:"Partner",
     disclosure:"Simulation", start_available:true, recurring_positive_rationales:[], recurring_negative_rationales:[],
@@ -442,7 +443,8 @@ test("investor register shows six rows and scrolls to the remaining profiles", a
     height:element.clientHeight, rowHeight:element.querySelector("button")!.getBoundingClientRect().height,
     scrollHeight:element.scrollHeight, overflow:getComputedStyle(element).overflowY,
   }));
-  expect(geometry.height).toBeCloseTo(geometry.rowHeight * 6, 0);
+  if (testInfo.project.name === "mobile") expect(geometry.height).toBeCloseTo(geometry.rowHeight * 6, 0);
+  else expect(geometry.height).toBeGreaterThanOrEqual(geometry.rowHeight * 6);
   expect(geometry.scrollHeight).toBeGreaterThan(geometry.height);
   expect(geometry.overflow).toBe("scroll");
   await list.getByRole("button",{name:/Investor 19/}).click();
@@ -473,7 +475,7 @@ test("screenshot mode masks identities across gallery, dossiers and settings", a
   const raw = await (await page.request.get('/api/investors?include_unavailable=true')).json();
   test.skip(!raw.investors.length, 'Requires local investor profiles');
   await page.goto('/?screenshots=1');
-  await expect(page.locator('.investor-preview h3')).toHaveText(/Investor #\d+/);
+  await expect(page.locator('.preview-body[aria-hidden=false] h3')).toHaveText(/Investor #\d+/);
   await expect(page.locator('.preview-portrait img')).toHaveAttribute('src', '/investor-placeholder.svg');
   const assertMasked = async () => {
     const body = await page.locator('body').innerText();
@@ -493,5 +495,5 @@ test("screenshot mode masks identities across gallery, dossiers and settings", a
   await expect(page.getByText(/Investor #\d+/).first()).toBeVisible();
   await assertMasked();
   await page.getByRole('link', {name:'Screenshot mode · Exit'}).click();
-  await expect(page.locator('.investor-preview h3')).not.toHaveText(/Investor #\d+/);
+  await expect(page.locator('.preview-body[aria-hidden=false] h3')).not.toHaveText(/Investor #\d+/);
 });
