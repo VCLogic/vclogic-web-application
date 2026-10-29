@@ -470,3 +470,30 @@ test("live wiki chapters load and citations open exact evidence", async ({ page 
   await expect(page.locator('.memory-result-excerpt')).not.toBeEmpty();
   expect(errors).toEqual([]);
 });
+
+test("screenshot mode masks identities across gallery, dossiers and settings", async ({ page }) => {
+  const raw = await (await page.request.get('/api/investors?include_unavailable=true')).json();
+  test.skip(!raw.investors.length, 'Requires local investor profiles');
+  await page.goto('/?screenshots=1');
+  await expect(page.locator('.investor-preview h3')).toHaveText(/Investor #\d+/);
+  await expect(page.locator('.preview-portrait img')).toHaveAttribute('src', '/investor-placeholder.svg');
+  const assertMasked = async () => {
+    const body = await page.locator('body').innerText();
+    for (const investor of raw.investors) {
+      expect(body.toLowerCase()).not.toContain(investor.display_name.replace(/-like Investor$/i, '').toLowerCase());
+      if (investor.firm) expect(body.toLowerCase()).not.toContain(investor.firm.toLowerCase());
+    }
+  };
+  await assertMasked();
+  await page.getByRole('link', {name: /Explore decision dossier/}).click();
+  await expect(page.locator('#dossier-title')).toHaveText(/Investor #\d+/);
+  expect(page.url()).toMatch(/\/profiles\/investor-\d+$/);
+  await page.locator('.investment-memory-library .memory-reader').getByText('Read complete chapter', {exact:true}).click();
+  await expect(page.locator('.memory-body')).not.toBeEmpty();
+  await assertMasked();
+  await page.getByRole('link', {name:'Settings',exact:true}).click();
+  await expect(page.getByText(/Investor #\d+/).first()).toBeVisible();
+  await assertMasked();
+  await page.getByRole('link', {name:'Screenshot mode · Exit'}).click();
+  await expect(page.locator('.investor-preview h3')).not.toHaveText(/Investor #\d+/);
+});

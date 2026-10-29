@@ -1,3 +1,4 @@
+import { screenshotMode } from "../api/screenshotMode";
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { VCLogicMark } from "./VCLogicMark";
@@ -16,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <NavLink to="/sessions">Rehearsals</NavLink>
         <NavLink to="/settings/investors">Settings</NavLink>
       </nav>
-      <p className="header-method">Evidence-grounded decision rehearsal</p>
+      <p className={`header-method${screenshotMode() ? " screenshot-mode-status" : ""}`}>{screenshotMode() ? <a href="/?screenshots=0">Screenshot mode · Exit</a> : "Evidence-grounded decision rehearsal"}</p>
     </header>
     <main id="main-content">{children}</main>
   </div>;

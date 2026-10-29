@@ -1,3 +1,4 @@
+import { screenshotMode, screenshotMask } from "./screenshotMode";
 import type { InvestorSpecifications, InvestorSettingsResponse, CanonicalAssessment, CreateSessionInput, Graph, Investor, InvestorComparison, InvestorMatch, MemorySearchResponse, PitchProject, PitchProjectSummary, PitchVersion, Profile, RehearsalDepth, Session, SessionSummary } from "./types";
 
 export class ApiError extends Error { constructor(public status:number, message:string, public code?:string){ super(message); } }
@@ -31,13 +32,17 @@ function apiErrorMessage(body: unknown, fallback: string): string {
 }
 
 async function request<T>(path:string, init?:RequestInit):Promise<T>{
-  const response=await fetch(path,{...init,headers:{"Content-Type":"application/json",...init?.headers}});
+  const masked = screenshotMode();
+  if (masked && init?.method && init.method !== 'GET') throw new ApiError(403, 'Screenshot mode is read-only. Exit screenshot mode to make changes.');
+  const presentation = masked ? await screenshotMask() : undefined;
+  const response=await fetch(presentation?.originalPath(path) ?? path,{...init,headers:{"Content-Type":"application/json",...init?.headers}});
   if(!response.ok){
     const body:unknown=await response.json().catch(()=>({}));
     const code=body && typeof body === "object" && typeof (body as Record<string,unknown>).code === "string" ? (body as Record<string,string>).code : undefined;
-    throw new ApiError(response.status,apiErrorMessage(body,response.statusText || "Request failed"),code);
+    throw new ApiError(response.status,masked ? "Request failed in screenshot mode." : apiErrorMessage(body,response.statusText || "Request failed"),code);
   }
-  return response.json() as Promise<T>;
+  const data = await response.json() as T;
+  return presentation ? presentation.mask(data) : data;
 }
 export const api={
   investorSpecifications:(slug:string,version?:string)=>request<InvestorSpecifications>(`/api/settings/investors/${encodeURIComponent(slug)}/specifications${version ? `?version=${encodeURIComponent(version)}` : ""}`),

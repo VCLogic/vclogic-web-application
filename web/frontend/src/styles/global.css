@@ -12,3 +12,5 @@
 /* Four primary destinations stay reachable without clipping the brand. */
 @media (min-width:761px) and (max-width:1100px){.app-header{grid-template-columns:auto 1fr}.header-method{display:none}.primary-nav{justify-content:flex-end}}
 @media (max-width:600px){.app-header{grid-template-columns:1fr;padding:12px 16px 0;gap:8px}.wordmark{font-size:1.35rem}.primary-nav{justify-content:space-between;gap:12px;min-height:36px}.primary-nav a{font-size:.7rem;padding:0 2px}.vc-logic-mark{width:28px;height:28px}}
+
+@media(max-width:1100px){.header-method.screenshot-mode-status{display:block;grid-column:1 / -1;justify-self:end;padding-bottom:10px}}

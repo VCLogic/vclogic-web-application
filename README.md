@@ -125,6 +125,27 @@ The uv configuration installs the sibling engine in editable mode. The applicati
 
 The application discovers current generated wikis for reading and prepared bundles for assessment. It does not run onboarding or build missing indexes through the browser. Historical sessions retain their original investor version when you change the active selection.
 
+## Anonymized screenshots
+
+Open `http://localhost:8001/?screenshots=1` (or add `?screenshots=1` to your
+application URL). Screenshot mode persists within that browser tab as you
+navigate through the gallery, dossiers, settings, saved assessments, and
+rehearsals. Investors receive deterministic `Investor #1`, `Investor #2`, etc.
+aliases for the current catalog, with neutral placeholder portraits. Known
+investor names and firms are masked in narrative text and live updates; external
+source URLs are omitted. Navigate from the gallery to use aliased profile URLs.
+
+Screenshot mode is read-only: it cannot start paid runs, submit answers, or save
+settings. Existing results remain readable. Select **Screenshot mode · Exit** in
+the header, or open `/?screenshots=0`, to return to normal operation. No stored
+VC data is changed. Rebuild the frontend after installing this change.
+
+This is visual masking for screenshots, not an anonymized data export or access
+control. The browser still receives original API data. Review screenshots before
+sharing: distinctive quotations, portfolio companies, and names absent from the
+catalog can still identify an investor. Capture the page rather than browser
+developer tools or an old URL containing a real investor slug.
+
 ## Live Investment Memory integration
 
 The gallery and dossiers read generated wikis directly from the sibling

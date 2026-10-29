@@ -1,0 +1,48 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import { createScreenshotMask, screenshotMode } from './screenshotMode';
+import { api } from './client';
+
+afterEach(() => { sessionStorage.clear(); window.history.replaceState({}, '', '/'); vi.unstubAllGlobals(); });
+
+it('masks names, firms, nested narratives, URLs, portraits and investor keys without changing inputs', () => {
+  const mask = createScreenshotMask([{vc_slug:'example-person',display_name:'Example Person-like Investor',firm:'Sample Ventures'}]);
+  const original = {vc_slug:'example-person',display_name:'Example Person-like Investor',firm:'Sample Ventures',portrait_path:'/private.jpg',source_url:'https://example.org/private',body:'Person and Example at Sample Ventures. [Source](https://example.org/person)',versions:{'example-person':'version-id'}};
+  const result = mask.mask(original);
+  expect(result).toMatchObject({vc_slug:'investor-1',display_name:'Investor #1',firm:'Investment firm',portrait_path:'/investor-placeholder.svg',source_url:'',versions:{'investor-1':'version-id'}});
+  expect(result.body).not.toMatch(/Example|Person|Sample Ventures|https:/);
+  expect(original.portrait_path).toBe('/private.jpg');
+  expect(mask.originalPath('/api/investors/investor-1/chapters/persona.md')).toBe('/api/investors/example-person/chapters/persona.md');
+});
+
+it('assigns deterministic aliases regardless of endpoint ordering', () => {
+  const rows=[{vc_slug:'z-person',display_name:'Zed Person'},{vc_slug:'a-person',display_name:'Alpha Person'}];
+  expect(createScreenshotMask(rows).mask(rows)).toEqual(createScreenshotMask([...rows].reverse()).mask(rows));
+});
+
+it('persists mode across navigation and explicitly exits', () => {
+  window.history.replaceState({}, '', '/?screenshots=1'); expect(screenshotMode()).toBe(true);
+  window.history.replaceState({}, '', '/pitches'); expect(screenshotMode()).toBe(true);
+  window.history.replaceState({}, '', '/?screenshots=0'); expect(screenshotMode()).toBe(false);
+});
+
+it('blocks writes before any network request in screenshot mode', async () => {
+  window.history.replaceState({}, '', '/?screenshots=1');
+  const fetch=vi.fn(); vi.stubGlobal('fetch',fetch);
+  await expect(api.updateInvestorSettings('investor-1',{enabled:false,active_version:null})).rejects.toThrow('read-only');
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it('masks saved assessment narratives and translates alias routes back for reads', async () => {
+  window.history.replaceState({}, '', '/?screenshots=1');
+  const identities = {investors:[{vc_slug:'example-person',display_name:'Example Person',firm:'Sample Ventures'}]};
+  const fetch=vi.fn().mockImplementation((path:string) => Promise.resolve(new Response(JSON.stringify(
+    path === '/api/settings/investors' || path === '/api/investors?include_unavailable=true'
+      ? identities : {vc_slug:'example-person',decision_summary:'Example Person at Sample Ventures would invest.',citations:[{title:'Person interview',source_url:'https://example.org/person'}]},
+  ))));
+  vi.stubGlobal('fetch',fetch);
+  const result=await api.assessment('saved-assessment');
+  expect(result.decision_summary).toBe('Investor #1 at Investment firm would invest.');
+  expect(result.citations?.[0].source_url).toBe('');
+  await api.profile('investor-1');
+  expect(fetch).toHaveBeenLastCalledWith('/api/investors/example-person',expect.anything());
+});
