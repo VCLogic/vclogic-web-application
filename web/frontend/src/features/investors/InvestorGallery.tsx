@@ -9,7 +9,7 @@ import { SimulationBadge } from "../../components/SimulationBadge";
 import "./investors.css";
 
 export function InvestorGallery() {
-  const { data, isPending, error } = useQuery({ queryKey: ["investors"], queryFn: api.investors, refetchInterval: 30_000 });
+  const { data, isPending, error } = useQuery({ queryKey: ["investor-gallery"], queryFn: api.investorsForGallery, refetchInterval: 30_000 });
   const [selectedSlug, setSelectedSlug] = useState("");
   useEffect(() => {
     if (!selectedSlug && data?.investors[0]) setSelectedSlug(data.investors[0].vc_slug);
@@ -35,7 +35,7 @@ export function InvestorGallery() {
     <div className="gallery-heading" id="investors"><div><span className="eyebrow">Available profiles</span><h2>Choose whose questions you want to face</h2></div><p>Auditable simulations—not the real investors and not endorsed by them.</p></div>
     {!data?.investors.length && <div className="dark-state"><h2>No investors are available yet</h2><p>Enable a ready investor version in Settings to start an assessment.</p><Link className="button light" to="/settings/investors">Open investor settings</Link></div>}
     <div className="investor-register">
-      <nav className="investor-register-list" aria-label="Investor profiles">
+      <nav className="investor-register-list" aria-label="Investor profiles" tabIndex={0}>
         {data?.investors.map((investor, index) => <button key={investor.vc_slug} type="button" aria-current={selected?.vc_slug === investor.vc_slug ? "true" : undefined} onClick={() => setSelectedSlug(investor.vc_slug)}>
           <span className="register-number">{String(index + 1).padStart(2, "0")}</span><span><b>{investor.display_name}</b><small>{investor.firm}</small></span><ArrowRight size={15}/>
         </button>)}
@@ -44,15 +44,18 @@ export function InvestorGallery() {
         <div className="preview-portrait"><InvestorPortrait name={selected.display_name} src={selected.portrait_path} alt={selected.portrait_alt}/><div className="portrait-badge"><SimulationBadge/></div></div>
         <div className="preview-body">
           <p className="preview-kicker">{selected.role} · {selected.firm}</p><h3>{selected.display_name}</h3>
+          {selected.selection_note && <p role="status">{selected.selection_note}</p>}
           <p className="investor-summary">{selected.summary || "A source-linked representation of this investor’s observable investment approach."}</p>
-          {hasDecisionInfluences && <div className="investor-influences"><h4>Frequently observed rationales</h4><p className="recurrence-note">Bar length shows frequency in the available record, not causal importance.</p>
+          {hasDecisionInfluences && <div className="investor-influences"><h4>{selected.evidence_basis === "wiki" ? "Rationales in the current wiki" : "Frequently observed rationales"}</h4><p className="recurrence-note">{selected.evidence_basis === "wiki" ? "Bar length shows evidence-excerpt frequency, not investment decisions or causal importance." : "Bar length shows frequency in the available record, not causal importance."}</p>
+            {selected.evidence_note && <p className="recurrence-note">{selected.evidence_note}</p>}
             <DecisionInfluenceSummary
               dark
               positive={selected.recurring_positive_rationales} negative={selected.recurring_negative_rationales} unresolved={selected.recurring_unresolved_rationales}
               positiveCounts={selected.recurring_positive_counts} negativeCounts={selected.recurring_negative_counts} unresolvedCounts={selected.recurring_unresolved_counts}
             />
           </div>}
-          <div className="card-actions"><Link className="button light" to={`/assess/${selected.vc_slug}`}>Assess your pitch <ArrowRight size={16}/></Link><Link className="profile-link" to={`/profiles/${selected.vc_slug}`}><BookOpen size={15}/> Explore decision dossier</Link></div>
+          {!hasDecisionInfluences && selected.evidence_note && <p className="recurrence-note">{selected.evidence_note}</p>}
+          <div className="card-actions">{selected.start_available ? <Link className="button light" to={`/assess/${selected.vc_slug}`}>Assess your pitch <ArrowRight size={16}/></Link> : <Link className="button light" to="/settings/investors">Choose active version <ArrowRight size={16}/></Link>}<Link className="profile-link" to={`/profiles/${selected.vc_slug}`}><BookOpen size={15}/> Explore decision dossier</Link></div>
         </div>
       </article>}
     </div>

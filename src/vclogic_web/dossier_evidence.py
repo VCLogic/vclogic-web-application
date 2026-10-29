@@ -62,3 +62,39 @@ def load_evidence(path: Path, slug: str, version_id: str) -> DossierEvidence:
         return DossierEvidence(status='invalid', note=(
             'The historical decision record for this investor version could not be verified. '
             'Re-import its dossier evidence. Investment Memory remains available below.'))
+
+
+# Explicit legacy identities; never infer an investor match from a similar name.
+LEGACY_SLUGS = {
+    slug: slug for slug in ('charles-hudson-precursor-ventures', 'cyan-banister-long-journey-ventures',
+        'elizabeth-yin-hustle-fund', 'jesse-middleton-flybridge', 'jillian-manus-structure-capital', 'phil-nadel')
+}
+LEGACY_SLUGS['phil-nadel-forefront-venture-partners'] = 'phil-nadel'
+
+
+def reference_paths(root: Path, slug: str) -> tuple[Path, ...]:
+    legacy_slug = LEGACY_SLUGS.get(slug)
+    return tuple(sorted((root/legacy_slug).glob('*.json'))) if legacy_slug else ()
+
+
+def load_profile_evidence(root: Path, slug: str, version_id: str) -> DossierEvidence:
+    exact = root/slug/f'{version_id}.json'
+    if exact.exists():
+        return load_evidence(exact, slug, version_id)
+    records = []
+    for path in reference_paths(root, slug):
+        if len(path.stem) != 64 or any(c not in '0123456789abcdef' for c in path.stem):
+            continue
+        evidence = load_evidence(path, LEGACY_SLUGS[slug], path.stem)
+        if evidence.status == 'available':
+            records.append((path.stem, evidence))
+    if not records:
+        return DossierEvidence()
+    # Different reference exports need an explicit choice; never combine or double-count.
+    if any(record.investigations != records[0][1].investigations for _, record in records[1:]):
+        return DossierEvidence(status='not_prepared', note='Multiple different earlier reference histories exist. Select or import the intended history for this version.')
+    source_version, evidence = records[0]
+    return DossierEvidence(evidence.investigations, 'available',
+        f'Earlier LangGraph reference history: {len(evidence.investigations)} assessments '
+        f'from investor version {source_version}. Descriptive observations only; '
+        'not assessments or calibration of the current Investment Memory.')

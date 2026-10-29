@@ -50,7 +50,7 @@ export function InvestmentMemoryLibrary({ vcSlug, sections, query, onQueryChange
         <select id="memory-chapter-select" aria-label="Choose Investment Memory chapter" value={selected?.section_id} onChange={(event) => setSelectedId(event.target.value)}>{sections.map((section) => <option key={section.section_id} value={section.section_id}>{memoryChapterTitle(section)}</option>)}</select>
         <div className="memory-index-desktop">{indexGroup("Core profile", grouped.core)}{indexGroup("Evidence library", grouped.evidence)}</div>
       </nav>
-      {selected && <InvestmentMemoryChapter key={selected.section_id} section={selected} />}
+      {selected && <InvestmentMemoryChapter key={selected.section_id} section={selected} vcSlug={vcSlug} onFindEvidence={onQueryChange} />}
     </div> : <p className="memory-library-empty">No Investment Memory chapters are available for this profile.</p>}
   </section>;
 }

@@ -1,4 +1,6 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
+import { cleanup, render as renderView, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Profile } from "../../api/types";
@@ -9,6 +11,9 @@ vi.mock("./MemorySearch", () => ({
 }));
 
 afterEach(cleanup);
+function render(element: ReactElement) {
+  return renderView(<QueryClientProvider client={new QueryClient()}>{element}</QueryClientProvider>);
+}
 
 const sections: Profile["sections"] = [
   { section_id: "evidence/market_opportunity.md", title: "market_opportunity", preview: "Market preview.", body: "Complete market evidence.", character_count: 25, source_paths: ["wiki/evidence/market.md"] },
@@ -56,7 +61,7 @@ describe("InvestmentMemoryLibrary", () => {
     render(<InvestmentMemoryLibrary vcSlug="charles" sections={sections} query="" onQueryChange={vi.fn()} />);
     const reader = screen.getByRole("article", { name: "Investment Memory chapter: Charles Hudson — Decision Policy" });
 
-    expect(within(reader).getByText("Complete persona body.")).not.toBeVisible();
+    expect(within(reader).queryByText("Complete persona body.")).not.toBeInTheDocument();
     expect(within(reader).getByText("wiki/persona.md")).not.toBeVisible();
     await user.click(within(reader).getByRole("group", { name: "Read complete chapter: Charles Hudson — Decision Policy" }).querySelector("summary")!);
     expect(within(reader).getByText("Complete persona body.")).toBeVisible();

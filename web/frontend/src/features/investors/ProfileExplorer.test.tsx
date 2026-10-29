@@ -89,7 +89,7 @@ describe("ProfileExplorer", () => {
     expect(screen.getByRole("link", { name: /photo: the pitch/i })).toBeVisible();
     expect(screen.getByText("Investor decision dossier")).toBeVisible();
     expect(screen.getByRole("link", {name:"View investor specifications"})).toHaveAttribute("href", `/settings/investors/charles/specifications?version=${"a".repeat(64)}`);
-    expect(screen.getByRole("heading", { name: "Decision Signature" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Decision Signature" })).toBeVisible();
     expect(screen.getByText("2 chapters")).toBeVisible();
     expect(screen.getByText("1 decision theme")).toBeVisible();
     expect(screen.getByText("1 rationale")).toBeVisible();
@@ -103,7 +103,7 @@ describe("ProfileExplorer", () => {
     ];
     expect(disclosures).toHaveLength(2);
     disclosures.forEach((details) => expect(details).not.toHaveAttribute("open"));
-    expect(screen.getByText(/COMPLETE THESIS BODY/)).not.toBeVisible();
+    expect(screen.queryByText(/COMPLETE THESIS BODY/)).not.toBeInTheDocument();
     expect(screen.getByText("wiki/very/long/thesis-source.md")).not.toBeVisible();
     expect(memory).not.toHaveBeenCalled();
     expect(screen.getAllByRole("article", { name: /^Investment Memory chapter:/ })).toHaveLength(1);
@@ -316,7 +316,7 @@ describe("ProfileExplorer", () => {
 
     expect(await screen.findByRole("heading", { name: "Charles Hudson-like Investor" })).toBeVisible();
     expect(screen.getByText("Early conviction is the heart of this chapter.")).toBeVisible();
-    expect(screen.getByText(/decision signature is unavailable/i)).toBeVisible();
+    expect(await screen.findByText(/decision signature is unavailable/i)).toBeVisible();
     expect(screen.getByRole("button", { name: /retry decision signature/i })).toBeVisible();
   });
 
@@ -340,4 +340,42 @@ describe("ProfileExplorer", () => {
     expect(within(chapter).getAllByText("Legacy complete body that predates preview metadata.").some((element) => element.classList.contains("memory-reader-preview"))).toBe(true);
     expect(within(chapter).getByText("52 characters · 0 sources")).toBeVisible();
   });
+});
+
+it("preserves original chapters separately from the refreshed memory", async () => {
+  vi.spyOn(api, "profile").mockResolvedValue({...profile, reference_note: "Earlier source material, not current assessment inputs.", reference_sections: [{section_id:"old.md", title:"Original thesis", body:"Complete original text", source_paths:["inputs/wiki/charles/old.md"]}]});
+  vi.spyOn(api, "profileGraph").mockResolvedValue(graph);
+  renderProfile();
+  const archive = await screen.findByText("Earlier LangGraph Investment Memory (1 chapters)");
+  await userEvent.click(archive);
+  expect(screen.getByText("Earlier source material, not current assessment inputs.")).toBeVisible();
+  await userEvent.click(screen.getByText("Original thesis", {selector:"summary"}));
+  const chapter = screen.getByRole("article", {name:"Investment Memory chapter: Original thesis"});
+  await userEvent.click(within(chapter).getByText("Read complete chapter", {selector:"summary"}));
+  expect(within(chapter).getAllByText("Complete original text").length).toBeGreaterThan(0);
+});
+
+it("shows wiki coverage while rationale data is loading rather than zero decisions", async () => {
+  vi.spyOn(api,"profile").mockResolvedValue({...profile, investor:{...profile.investor,evidence_basis:"wiki",policy_count:10,thesis_count:18,evidence_count:238,source_count:50}});
+  vi.spyOn(api,"profileGraph").mockReturnValue(new Promise(()=>{}));
+  renderProfile();
+  expect(await screen.findByText("18 entries")).toBeVisible();
+  expect(screen.getByText("10 sections")).toBeVisible();
+  expect(screen.getByText("238 excerpts · 50 sources")).toBeVisible();
+  expect(screen.queryByText("0 rationales")).not.toBeInTheDocument();
+});
+
+it("loads full wiki chapters on demand and follows citations to exact evidence", async () => {
+  const wikiProfile={...profile, investor:{...profile.investor, memory_version:"b".repeat(64)}, sections:[{...profile.sections[0],body:"",body_loaded:false,memory_version:"b".repeat(64)}]};
+  vi.spyOn(api,"profile").mockResolvedValue(wikiProfile);
+  vi.spyOn(api,"profileGraph").mockResolvedValue({...graph,evidence_basis:"wiki"});
+  const chapter=vi.spyOn(api,"chapter").mockResolvedValue({...wikiProfile.sections[0],body_loaded:true,body:"Founder evidence [ev:charles-1]"});
+  const memory=vi.spyOn(api,"memory").mockResolvedValue({results:[]});
+  renderProfile();
+  const summary=await screen.findByText("Read complete chapter");
+  expect(chapter).not.toHaveBeenCalled();
+  await userEvent.click(summary);
+  await userEvent.click(await screen.findByRole("button",{name:"ev evidence"}));
+  await vi.waitFor(()=>expect(memory).toHaveBeenCalledWith("charles","ev:charles-1",1,5));
+  expect(chapter).toHaveBeenCalledWith("charles","thesis","b".repeat(64));
 });

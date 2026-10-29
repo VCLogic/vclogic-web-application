@@ -12,3 +12,9 @@ test-results/
 playwright-report/
 *.tsbuildinfo
 *.egg-info/
+
+# Local investor content; keep the application code and synthetic tests tracked.
+/wiki/
+/inputs/
+/bundles/
+/web/frontend/public/investors/

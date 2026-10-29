@@ -44,6 +44,8 @@ export const api={
   investorSettings:()=>request<InvestorSettingsResponse>("/api/settings/investors"),
   refreshInvestors:()=>request<InvestorSettingsResponse>("/api/settings/investors/refresh",{method:"POST"}),
   updateInvestorSettings:(slug:string,body:{enabled:boolean;active_version:string|null})=>request<InvestorSettingsResponse>(`/api/settings/investors/${encodeURIComponent(slug)}`,{method:"PUT",body:JSON.stringify(body)}),
+  chapter:(slug:string,sectionId:string,memoryVersion?:string|null)=>request<Profile["sections"][number]>(`/api/investors/${encodeURIComponent(slug)}/chapters/${encodeURIComponent(sectionId)}${memoryVersion ? `?memory_version=${encodeURIComponent(memoryVersion)}` : ""}`),
+  investorsForGallery:()=>request<{investors:Investor[]}>("/api/investors?include_unavailable=true"),
   investors:()=>request<{investors:Investor[]}>("/api/investors"),
   profile:(slug:string)=>request<Profile>(`/api/investors/${slug}`),
   profileGraph:(slug:string)=>request<Graph>(`/api/investors/${slug}/rationale-graph`),

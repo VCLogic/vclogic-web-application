@@ -87,6 +87,8 @@ export function MemorySearch({ vcSlug, query, onQueryChange }: MemorySearchProps
           aria-label={`Evidence ${resultNumber} of ${totalResults} from ${sourceTitle}`}
           key={`${result.source_path}:${result.evidence_id}`}
         >
+          {result.support && <p>Support: {result.support}</p>}
+          {result.interpretation && <p>{result.interpretation}</p>}
           <header>
             <strong>{sourceTitle}</strong>
             <span className="memory-result-tags">
@@ -97,6 +99,7 @@ export function MemorySearch({ vcSlug, query, onQueryChange }: MemorySearchProps
           <SafeMarkdown className="memory-result-excerpt">{result.excerpt}</SafeMarkdown>
           <details aria-label={`Source details: ${sourceTitle}`}>
             <summary>Source details</summary>
+            {result.source_url && /^https?:\/\//.test(result.source_url) && <p><a href={result.source_url} target="_blank" rel="noreferrer noopener">Open original source</a></p>}
             {result.source_reference && <p><strong>Public source:</strong> {result.source_reference}</p>}
             <p><strong>Evidence ID:</strong> {result.evidence_id}</p>
             <p><strong>Source type:</strong> {result.source_kind}</p>

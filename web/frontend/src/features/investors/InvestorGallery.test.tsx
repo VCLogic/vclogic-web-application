@@ -1,9 +1,11 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { api } from "../../api/client";
 import { InvestorGallery } from "./InvestorGallery";
+
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 const investor = {
   vc_slug: "charles",
@@ -34,7 +36,7 @@ const investorWithoutInfluences = {
 };
 
 function renderGallery() {
-  vi.spyOn(api, "investors").mockResolvedValue({ investors: [investor, investorWithoutInfluences] });
+  vi.spyOn(api, "investorsForGallery").mockResolvedValue({ investors: [investor, investorWithoutInfluences] });
   return render(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter><InvestorGallery /></MemoryRouter>
@@ -70,4 +72,23 @@ it("renders compact frequently observed rationales without implying causal impor
   fireEvent.click(screen.getByRole("button", { name: /no signals investor/i }));
   expect(screen.getByRole("heading", { name: "No Signals Investor" })).toBeVisible();
   expect(screen.queryByRole("region", { name: "Frequently observed rationales" })).not.toBeInTheDocument();
+});
+
+it("keeps unavailable investors inspectable with a settings action", async () => {
+  vi.spyOn(api, "investorsForGallery").mockResolvedValue({ investors: [{...investor, start_available: false, selection_note: "Choose a ready version in Settings.", evidence_note: "Earlier LangGraph reference history."}] });
+  render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><InvestorGallery /></MemoryRouter></QueryClientProvider>);
+  expect(await screen.findByText("Choose a ready version in Settings.")).toBeVisible();
+  expect(screen.getByText("Earlier LangGraph reference history.")).toBeVisible();
+  expect(screen.getByRole("link", {name: /choose active version/i})).toHaveAttribute("href", "/settings/investors");
+  expect(screen.queryByRole("link", {name: /assess your pitch/i})).not.toBeInTheDocument();
+});
+
+it("keeps every investor reachable in the scrolling register", async () => {
+  const investors = Array.from({length: 19}, (_, i) => ({...investor, vc_slug: `investor-${i}`, display_name: `Investor ${i + 1}`}));
+  vi.spyOn(api, "investorsForGallery").mockResolvedValue({investors});
+  render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><InvestorGallery /></MemoryRouter></QueryClientProvider>);
+  const nav = await screen.findByRole("navigation", {name: "Investor profiles"});
+  expect(within(nav).getAllByRole("button")).toHaveLength(19);
+  fireEvent.click(within(nav).getByRole("button", {name: /Investor 19/}));
+  expect(screen.getByRole("heading", {name: "Investor 19"})).toBeVisible();
 });

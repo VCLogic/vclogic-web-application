@@ -198,6 +198,7 @@ class ProfileService:
             role=profile.role,
             disclosure=DISCLOSURE,
             summary=f"A source-linked simulation of {profile.display_name}'s observable investment approach.",
+            evidence_note=self.dossier_evidence.note if self.dossier_evidence else None,
             evidence_coverage=min(1.0, investigation_count / 10) if investigation_count else None,
             **presentation,
             recurring_positive_rationales=positive,
@@ -241,6 +242,12 @@ class ProfileService:
         return InvestorProfileResponse(
             investor=self._card(profile), sections=tuple(sections)
         )
+
+    def chapter(self, vc_slug: str, section_id: str, memory_version: str | None = None) -> ProfileSection:
+        for section in self.profile(vc_slug).sections:
+            if section.section_id == section_id:
+                return section
+        raise ValueError('Unknown Investment Memory chapter')
 
     def _search_memory_candidates(
         self, vc_slug: str, query: str

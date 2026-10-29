@@ -183,9 +183,13 @@ class InvestorCatalog:
                              versions=[row.public() for row in candidates.values()]))
         return dict(investors=rows, discovery_errors=self._errors)
 
+    def cached_settings(self) -> dict:
+        """Presentation reads the last scan without waiting for index validation."""
+        return self._settings(self._preferences())
+
     def settings(self) -> dict:
         with self._guard:
-            if self._last_refresh and monotonic() - self._last_refresh < 5:
+            if self._last_refresh and monotonic() - self._last_refresh < 30:
                 return self._settings(self._preferences())
             return self.refresh()
 
