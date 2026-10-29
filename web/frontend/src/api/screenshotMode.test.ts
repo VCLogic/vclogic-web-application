@@ -46,3 +46,19 @@ it('masks saved assessment narratives and translates alias routes back for reads
   await api.profile('investor-1');
   expect(fetch).toHaveBeenLastCalledWith('/api/investors/example-person',expect.anything());
 });
+
+
+it('masks a firm encoded in the investor slug when wiki firm metadata is empty', () => {
+  const mask = createScreenshotMask([{vc_slug:'avery-reed-bright-ideas-group',display_name:'Avery Reed',firm:''}]);
+  expect(mask.mask({summary:'Avery Reed founded Bright Ideas Group.', body:'BRIGHT IDEAS GROUP and bright-ideas-group', firm:'Bright Ideas Group'})).toEqual({
+    summary:'Investor #1 founded Investment firm.', body:'Investment firm and Investment firm', firm:'Investment firm',
+  });
+});
+
+it('retains firm aliases from duplicate identities with less complete metadata', () => {
+  const mask = createScreenshotMask([
+    {vc_slug:'avery-reed',display_name:'Avery Reed',firm:'Example Capital'},
+    {vc_slug:'avery-reed',display_name:'Avery Reed',firm:''},
+  ]);
+  expect(mask.mask('Example Capital')).toBe('Investment firm');
+});

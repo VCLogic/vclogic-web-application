@@ -1,4 +1,5 @@
 type Identity = { vc_slug: string; display_name: string; firm?: string };
+const normalizedWords = (value: string) => value.trim().toLowerCase().replace(/[\s_-]+/g, ' ');
 const storageKey = 'vclogic-screenshot-mode';
 
 export function screenshotMode(): boolean {
@@ -14,24 +15,29 @@ export function createScreenshotMask(identities: Identity[]) {
     .sort((a, b) => a.vc_slug.localeCompare(b.vc_slug));
   const aliases = new Map(unique.map((row, index) => [row.vc_slug, `investor-${index + 1}`]));
   const words = new Map<string, string>();
+  const remember = (value: string, replacement: string) => words.set(normalizedWords(value), replacement);
+  const firms = new Set(identities.map(row => row.firm?.trim()).filter((firm): firm is string => !!firm));
   for (const [index, row] of unique.entries()) {
     const label = `Investor #${index + 1}`;
     const name = row.display_name.replace(/-like Investor$/i, '').trim();
-    words.set(row.display_name.toLowerCase(), label);
-    words.set(name.toLowerCase(), label);
+    remember(row.display_name, label);
+    remember(name, label);
     // Public quotations often identify an investor using only a first or last name.
-    for (const part of name.split(/\s+/)) if (part.length > 2) words.set(part.toLowerCase(), label);
-    if (row.firm?.trim()) words.set(row.firm.toLowerCase(), 'Investment firm');
+    for (const part of name.split(/\s+/)) if (part.length > 2) remember(part, label);
+    // Generated wikis can omit firm metadata while the slug still encodes it.
+    const nameSlug = name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (nameSlug && row.vc_slug.startsWith(`${nameSlug}-`)) firms.add(row.vc_slug.slice(nameSlug.length + 1).replaceAll('-', ' '));
   }
+  for (const firm of firms) remember(firm, 'Investment firm');
   const names = [...words.keys()].filter(Boolean).sort((a, b) => b.length - a.length);
-  const pattern = names.length ? new RegExp(`\\b(?:${names.map(escapePattern).join('|')})\\b`, 'gi') : null;
+  const pattern = names.length ? new RegExp(`\\b(?:${names.map(name => name.split(' ').map(escapePattern).join('[\\s_-]+')).join('|')})\\b`, 'gi') : null;
   const slugs = [...aliases.keys()].sort((a, b) => b.length - a.length);
   const slugPattern = slugs.length ? new RegExp(slugs.map(escapePattern).join('|'), 'g') : null;
   function text(value: string): string {
     // External links and image URLs can identify a person even without a name.
     let masked = value.replace(/https?:\/\/[^\s<>"')\]]+/gi, 'source-omitted');
     if (slugPattern) masked = masked.replace(slugPattern, slug => aliases.get(slug)!);
-    if (pattern) masked = masked.replace(pattern, name => words.get(name.toLowerCase())!);
+    if (pattern) masked = masked.replace(pattern, name => words.get(normalizedWords(name))!);
     return masked;
   }
   function mask<T>(value: T): T {
