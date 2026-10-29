@@ -25,6 +25,7 @@ export function RecordedRehearsalDemo() {
   if(isPending)return <p className="rehearsal-demo" role="status">Opening recorded rehearsal…</p>;
   if(error || !data)return <section className="rehearsal-demo"><h1>Recorded rehearsal unavailable</h1><p role="alert">{error?.message}</p><Link to="/demo/fictional">Open the fictional example</Link></section>;
   const winner=data.investors[data.selected];
+  const tied=data.investors.filter(investor=>investor.score===winner.score).length>1;
   const complete=step===data.exchanges.length+1;
   const current=complete ? data.final_score : step ? data.exchanges[step-1].after : winner.score;
   return <section className="rehearsal-demo">
@@ -34,11 +35,11 @@ export function RecordedRehearsalDemo() {
       <div className="demo-controls"><button className="button" onClick={()=>setStep(data.exchanges.length+1)}>Show complete run</button><button className="button secondary" onClick={()=>setStep(0)}>Restart replay</button><Link to="/?anonymous=1">Browse anonymously</Link></div>
     </header>
     <section><span className="demo-label">01 / Same pitch for all three investors</span><h2>Initial {data.company} pitch</h2><details><summary>Read the original pitch</summary><SafeMarkdown>{data.initial_pitch}</SafeMarkdown></details><p>All three assessment artifacts and the rehearsal were checked against the same pitch SHA-256 before export.</p></section>
-    <section><span className="demo-label">02 / Initial comparison</span><h2>Highest initial fit: {winner.name}</h2>
+    <section><span className="demo-label">02 / Initial comparison</span><h2>{tied?'Joint-highest initial fit':'Highest initial fit'}: {winner.name}</h2>
       <div className="demo-investors">{data.investors.map((investor,index)=><article key={investor.name} className={`demo-investor${index===data.selected?' selected':''}`}>
         <InvestorPortrait name={investor.name} src="/investor-placeholder.svg" alt={`${investor.name} placeholder`}/><h3>{investor.name}</h3><p>{investor.firm}</p>
         <strong className="demo-score">{score(investor.score)}<small>/100 initial fit</small></strong><p>Recorded decision: {investor.decision}</p>
-        {index===data.selected&&<p className="demo-winner">Selected for deeper rehearsal</p>}
+        {index===data.selected&&<p className="demo-winner">Selected for deeper rehearsal{tied?' · Tied highest initial score':''}</p>}
         <dl><dt>Positive signals</dt><dd>{investor.positives.map(label).join(' · ')||'None recorded'}</dd><dt>Concerns</dt><dd>{investor.concerns.map(label).join(' · ')||'None recorded'}</dd></dl>
         <details><summary>Read recorded assessment</summary><SafeMarkdown>{investor.justification}</SafeMarkdown></details>
       </article>)}</div>

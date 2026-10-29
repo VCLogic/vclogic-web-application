@@ -146,7 +146,7 @@ aliases and distinctive portfolio details can still identify an investor.
 
 Open `/demo` or `/demo/shiftpilot` for the **recorded ShiftPilot replay**. The local
 example compares three archived assessments using the same verified pitch,
-selects the highest initial fit, and reveals four recorded questions, founder
+selects an investor with the highest initial fit (identifying ties), and reveals recorded questions, founder
 answers, per-answer score changes, and final synthesis. **Show complete run**
 reveals everything for screenshots. Recorded model recommendations explain how
 to revise the pitch. The revision draft appends the actual founder clarifications;
