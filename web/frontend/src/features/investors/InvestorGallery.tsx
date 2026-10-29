@@ -42,7 +42,7 @@ export function InvestorGallery() {
       </nav>
       {selected && <article className="investor-preview" aria-live="polite">
         <div className="preview-portrait"><InvestorPortrait name={selected.display_name} src={selected.portrait_path} alt={selected.portrait_alt}/><div className="portrait-badge"><SimulationBadge/></div></div>
-        <div className="preview-body">
+        <div key={selected.vc_slug} className="preview-body" tabIndex={0} role="region" aria-label="Selected investor details">
           <p className="preview-kicker">{selected.role} · {selected.firm}</p><h3>{selected.display_name}</h3>
           {selected.selection_note && <p role="status">{selected.selection_note}</p>}
           <p className="investor-summary">{selected.summary || "A source-linked representation of this investor’s observable investment approach."}</p>

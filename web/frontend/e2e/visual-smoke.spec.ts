@@ -151,40 +151,38 @@ test("investor gallery is portrait-led and responsive", async ({ page }) => {
   expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
 });
 
-test("investor gallery cards preserve intrinsic content at 1347px and enlarged text", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "1347px geometry contract");
-  await page.setViewportSize({ width: 1347, height: 1000 });
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: /different investment lens/i })).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".preview-portrait img, .preview-portrait .portrait-fallback").first()).toBeVisible();
-  await expect(page.getByText("Investor-like simulation").first()).toBeVisible();
-  await expect(page.locator(".investor-preview")).toBeVisible();
-
-  const defaultGeometry = await galleryGeometry(page);
-  expect(defaultGeometry.cardCount).toBeGreaterThan(0);
-  expect(defaultGeometry.summaryCount).toBe(defaultGeometry.influenceSectionCount);
-  expect(defaultGeometry.influenceRowCount).toBeGreaterThanOrEqual(defaultGeometry.summaryCount);
-  // Current wiki summaries can grow; the portrait must stay within six rows.
-  const portraitHeight = await page.locator('.preview-portrait').evaluate(el => el.getBoundingClientRect().height);
-  const listHeight = await page.locator('.investor-register-list').evaluate(el => el.clientHeight);
-  expect(portraitHeight).toBeCloseTo(listHeight, 0);
-  expect(defaultGeometry.influencesFitWidth).toBe(true);
-  expect(defaultGeometry.influenceRowsClearActions).toBe(true);
-  expect(defaultGeometry.cardsFitContent).toBe(true);
-  expect(defaultGeometry.actionsInFlow).toBe(true);
-  expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
-
-  await page.locator("html").evaluate(element => { element.style.fontSize = "24px"; });
-  const enlargedGeometry = await galleryGeometry(page);
-  expect(enlargedGeometry.cardCount).toBe(defaultGeometry.cardCount);
-  expect(enlargedGeometry.summaryCount).toBe(enlargedGeometry.influenceSectionCount);
-  expect(enlargedGeometry.influenceRowCount).toBeGreaterThanOrEqual(enlargedGeometry.summaryCount);
-  expect(enlargedGeometry.influencesFitWidth).toBe(true);
-  expect(enlargedGeometry.influenceRowsClearActions).toBe(true);
-  expect(enlargedGeometry.cardsFitContent).toBe(true);
-  expect(enlargedGeometry.actionsInFlow).toBe(true);
-  expect(await page.locator('.preview-portrait').evaluate(el => el.getBoundingClientRect().height)).toBeCloseTo(portraitHeight, 0);
-  expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
+test("investor gallery columns align and long details remain scrollable", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "desktop and tablet column geometry");
+  // Geometry needs the live gallery, not expensive assessment-index validation.
+  await page.route("**/api/settings/investors", route => route.fulfill({json:{investors:[]}}));
+  for (const width of [1347, 900]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto("/?screenshots=1");
+    const details = page.getByRole('region', {name:'Selected investor details'});
+    await expect(details).toBeVisible();
+    for (const size of ['16px', '24px']) {
+      await page.locator('html').evaluate((element, size) => { element.style.fontSize = size; }, size);
+      const geometry = await page.locator('.investor-register').evaluate(element => {
+        const list = element.querySelector('.investor-register-list')!.getBoundingClientRect();
+        const preview = element.querySelector('.investor-preview')!.getBoundingClientRect();
+        const body = element.querySelector<HTMLElement>('.preview-body')!;
+        const portrait = element.querySelector('.preview-portrait')!.getBoundingClientRect();
+        return {listBottom:list.bottom, previewBottom:preview.bottom, bodyBottom:body.getBoundingClientRect().bottom,
+          portraitBottom:portrait.bottom, overflow:getComputedStyle(body).overflowY,
+          scrollHeight:body.scrollHeight, height:body.clientHeight};
+      });
+      expect(geometry.previewBottom).toBeCloseTo(geometry.listBottom, 0);
+      expect(geometry.bodyBottom).toBeCloseTo(geometry.listBottom, 0);
+      expect(geometry.portraitBottom).toBeLessThanOrEqual(geometry.listBottom + 1);
+      expect(geometry.overflow).toBe('auto');
+      expect(geometry.scrollHeight).toBeGreaterThan(geometry.height);
+      await details.scrollIntoViewIfNeeded();
+      await details.focus();
+      await page.keyboard.press('End');
+      await expect(details.getByRole('link', {name:/Explore decision dossier/})).toBeInViewport();
+      expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
+    }
+  }
 });
 
 test("investor dossier makes the decision signature and one memory chapter legible on desktop", async ({ page }, testInfo) => {

@@ -14,3 +14,16 @@
 .investor-register-list b{line-height:1.1;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .investor-register-list small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .investor-preview .recurrence-note{overflow-wrap:anywhere}
+
+/* Keep adjacent columns aligned; long dossiers scroll within the preview. */
+@media(min-width:721px){
+  .investor-register{min-height:0}
+  .investor-preview{height:calc(6 * var(--investor-row-height));min-height:0}
+  .preview-body{min-height:0;overflow-y:auto;scrollbar-gutter:stable;padding:28px}
+  .preview-body>*{flex-shrink:0}
+  .preview-body:focus-visible{outline:2px solid #a9c5ae;outline-offset:-3px}
+}
+@media(min-width:721px) and (max-width:1050px){
+  .investor-preview{grid-template-rows:200px minmax(0,1fr)}
+  .preview-portrait{height:200px}
+}
