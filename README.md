@@ -127,6 +127,15 @@ The application discovers current generated wikis for reading and prepared bundl
 
 ## Anonymized screenshots
 
+For a complete fictional walkthrough, open `/demo` or select **View fictional
+example** on the home page. It compares three numbered investors, continues with
+the highest initial fit (Investor #2), and reveals three scripted questions and
+answers before showing the original and revised pitch side by side. **Show
+complete example** reveals every step for screenshots; **Reset example** starts
+again. All facts and scores are illustrative, including a score decrease when a
+revenue claim is corrected. The demo makes no API/model calls and does not write
+projects, assessments, or rehearsals. It works without local investor data.
+
 Open `http://localhost:8001/?screenshots=1` (or add `?screenshots=1` to your
 application URL). Screenshot mode persists within that browser tab as you
 navigate through the gallery, dossiers, settings, saved assessments, and

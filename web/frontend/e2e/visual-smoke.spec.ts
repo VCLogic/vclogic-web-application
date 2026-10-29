@@ -497,3 +497,20 @@ test("screenshot mode masks identities across gallery, dossiers and settings", a
   await page.getByRole('link', {name:'Screenshot mode · Exit'}).click();
   await expect(page.locator('.preview-body[aria-hidden=false] h3')).not.toHaveText(/Investor #\d+/);
 });
+
+test("fictional demo compares three investors and revises the pitch without API calls", async ({page}) => {
+  const apiRequests:string[]=[];
+  page.on('request',request=>{if(new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url());});
+  await page.goto('/demo');
+  await expect(page.getByRole('heading',{name:'One pitch. Three investors. A sharper story.'})).toBeVisible();
+  await expect(page.locator('.demo-investor')).toHaveCount(3);
+  await page.getByRole('button',{name:'Begin rehearsal with Investor #2'}).click();
+  await expect(page.getByText('68 → 74/100')).toBeVisible();
+  await page.getByRole('button',{name:'Reveal next question and answer'}).click();
+  await expect(page.getByText('74 → 61/100')).toBeVisible();
+  await page.getByRole('button',{name:'Reveal next question and answer'}).click();
+  await expect(page.getByText('61 → 72/100')).toBeVisible();
+  await expect(page.getByRole('heading',{name:'After · Version 2'})).toBeVisible();
+  expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
+  expect(apiRequests).toEqual([]);
+});
