@@ -69,7 +69,7 @@ export function InvestorSettings() {
   const settings = useQuery({ queryKey: ["investor-settings"], queryFn: api.investorSettings, refetchInterval: 30_000 });
   const onSaved = (data: InvestorSettingsResponse) => {
     client.setQueryData(["investor-settings"], data);
-    for (const key of ["investors", "profile", "profile-graph", "investor-specifications"]) client.invalidateQueries({ queryKey: [key] });
+    for (const key of ["investors", "investor-gallery", "profile", "profile-graph", "investor-specifications"]) client.invalidateQueries({ queryKey: [key] });
   };
   const refresh = useMutation({ mutationFn: api.refreshInvestors, onSuccess: onSaved });
   return <section className="investor-settings">

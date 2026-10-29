@@ -66,6 +66,16 @@ class InvestorCard(PublicModel):
     role: str
     disclosure: str
     start_available: bool = True
+    selection_note: str | None = None
+    memory_note: str | None = None
+    memory_version: str | None = None
+    memory_generated_at: str | None = None
+    evidence_basis: Literal["wiki", "assessments"] = "assessments"
+    evidence_count: int | None = None
+    source_count: int | None = None
+    policy_count: int | None = None
+    thesis_count: int | None = None
+    evidence_note: str | None = None
     summary: str | None = None
     evidence_coverage: float | None = Field(default=None, ge=0, le=1)
     portrait_path: str | None = None
@@ -91,6 +101,8 @@ class ProfileSection(PublicModel):
     section_id: str
     title: str
     body: str
+    body_loaded: bool = True
+    memory_version: str | None = None
     preview: str = ""
     character_count: int = Field(default=0, ge=0)
     source_paths: tuple[str, ...] = ()
@@ -102,6 +114,9 @@ class InvestorProfileResponse(PublicModel):
     )
     investor: InvestorCard
     sections: tuple[ProfileSection, ...]
+    reference_sections: tuple[ProfileSection, ...] = ()
+    reference_note: str | None = None
+    reference_graph: RationaleGraphResponse | None = None
 
 
 class MemorySearchResponse(PublicModel):
@@ -128,6 +143,9 @@ class EvidenceView(PublicModel):
         "positive", "negative", "neutral", "mixed", "unresolved"
     ] | None = None
     source_reference: str | None = None
+    source_url: str | None = None
+    support: str | None = None
+    interpretation: str | None = None
 
 
 class RationaleNodeView(PublicModel):
@@ -136,7 +154,7 @@ class RationaleNodeView(PublicModel):
     title: str
     direction: Literal["positive", "negative", "neutral", "mixed", "unresolved"]
     salience: Literal["primary", "secondary", "unresolved"] = "unresolved"
-    confidence: float = Field(ge=0, le=1)
+    confidence: float | None = Field(default=None, ge=0, le=1)
     evidence_ids: tuple[str, ...] = ()
     initial_direction: str | None = None
     initial_confidence: float | None = Field(default=None, ge=0, le=1)
@@ -159,6 +177,8 @@ class RationaleEdgeView(PublicModel):
 
 
 class RationaleGraphResponse(PublicModel):
+    evidence_basis: Literal["wiki", "assessments"] = "assessments"
+    memory_version: str | None = None
     schema_version: Literal["vc-clone-rationale-graph-v1"] = Field(
         default="vc-clone-rationale-graph-v1", alias="schema"
     )
@@ -413,6 +433,9 @@ class AssessmentCitationView(PublicModel):
     title: str
     excerpt: str | None = None
     source_reference: str | None = None
+    source_url: str | None = None
+    support: str | None = None
+    interpretation: str | None = None
     episode_slug: str | None = None
     decision_status: str | None = None
     rationale_labels: tuple[str, ...] = ()

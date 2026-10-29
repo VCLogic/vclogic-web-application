@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
+import asyncio
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -27,6 +29,7 @@ from .models import (
 from .profiles import ProfileService
 from .investor_catalog import InvestorCatalog
 from .catalog_profiles import CatalogProfiles
+from .wiki_profiles import WikiChangedError
 from .investor_specifications import specifications
 from vc_clone_graph.rehearsal_config import load_rehearsal_config
 from .service import RehearsalWebService
@@ -37,6 +40,7 @@ def create_app(
     testing: bool = False,
     investor_catalog: InvestorCatalog | None = None,
     investor_bundle_roots: list[Path] | None = None,
+    investment_memory_roots: list[Path] | None = None,
     profile_service: ProfileService | None = None,
     rehearsal_service: RehearsalWebService | None = None,
     rehearsal_config: Path | None = None,
@@ -45,11 +49,22 @@ def create_app(
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
-        # Validate large runtime indexes before accepting browser requests.
-        # Subsequent catalog reads reuse the verified file-signature cache.
-        if investor_catalog is not None:
-            await run_in_threadpool(investor_catalog.refresh)
-        yield
+        async def refresh_catalog():
+            while True:
+                try:
+                    await run_in_threadpool(investor_catalog.refresh)
+                except Exception:
+                    logging.getLogger(__name__).exception('Investor assessment catalog refresh failed')
+                await asyncio.sleep(30)
+        # Wiki browsing is independent of expensive assessment-index validation.
+        task = asyncio.create_task(refresh_catalog()) if investor_catalog is not None else None
+        try:
+            yield
+        finally:
+            if task is not None:
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
 
     app = FastAPI(title="VCLogic", version="0.1.0", lifespan=lifespan)
     app.state.testing = testing
@@ -61,7 +76,8 @@ def create_app(
         investor_catalog = InvestorCatalog(workspace=workspace,
             config=load_rehearsal_config(config_path, workspace=workspace), bundle_roots=investor_bundle_roots)
     if profile_backend is None and investor_catalog is not None:
-        profile_backend = CatalogProfiles(investor_catalog)
+        profile_backend = (CatalogProfiles(investor_catalog, wiki_roots=investment_memory_roots)
+                           if investment_memory_roots is not None else CatalogProfiles(investor_catalog))
     if session_backend is None and not testing:
         session_backend = RehearsalWebService(
             workspace / (rehearsal_config or Path("configs/rehearsal-charles-v41-grounded.toml")),
@@ -145,13 +161,24 @@ def create_app(
         )
 
     @app.get("/api/investors", response_model=InvestorListResponse)
-    def investors() -> InvestorListResponse:
-        return InvestorListResponse(investors=profiles().list_profiles())
+    def investors(include_unavailable: bool = False) -> InvestorListResponse:
+        backend = profiles()
+        rows = backend.list_profiles(include_unavailable=True) if include_unavailable and isinstance(backend, CatalogProfiles) else backend.list_profiles()
+        return InvestorListResponse(investors=rows)
 
     @app.get("/api/investors/{vc_slug}")
     def investor(vc_slug: str):
         try:
             return profiles().profile(vc_slug)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/investors/{vc_slug}/chapters/{section_id:path}")
+    def investor_chapter(vc_slug: str, section_id: str, memory_version: str | None = Query(default=None, pattern=r"^[0-9a-f]{64}$")):
+        try:
+            return profiles().chapter(vc_slug, section_id, memory_version)
+        except WikiChangedError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 

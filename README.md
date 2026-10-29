@@ -390,10 +390,10 @@ git commit -m "Keep investor content local and ignore data directories"
 ```
 
 `--cached` preserves the files on disk, so existing local builds still work.
-The index cleanup has been verified in this checkout: all seven removals are
-staged, and the local files remain present. Commit the staged removals together
-with these ignore rules. This removes the files from future revisions, not
-from previous commits. No Git history rewrite is performed.
+The seven portrait files were removed from tracking in commit `3318738`; local
+copies were preserved. The commands above are only needed for older checkouts
+that still track those files. Removal affects future revisions, not previous
+commits. No Git history rewrite is performed.
 
 These rules exclude investor **data files**, not application source files.
 Legacy identity mappings, portrait source metadata, named test cases, and

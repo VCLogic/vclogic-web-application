@@ -426,3 +426,25 @@ test("read-only investor specifications remain usable on small screens", async (
   await expect(page.getByRole("button", {name:"Save changes"})).toHaveCount(0);
   expect(writes).toEqual([]);
 });
+
+test("investor register shows six rows and scrolls to the remaining profiles", async ({page}) => {
+  const investors = Array.from({length:19}, (_, index) => ({
+    vc_slug:`fixture-${index}`, display_name:`Investor ${index + 1}`, firm:"Example firm", role:"Partner",
+    disclosure:"Simulation", start_available:true, recurring_positive_rationales:[], recurring_negative_rationales:[],
+  }));
+  await page.route(/\/api\/investors\?include_unavailable=true$/, route => route.fulfill({json:{investors}}));
+  await page.goto("/");
+  const list = page.getByRole("navigation",{name:"Investor profiles"});
+  await expect(list.getByRole("button")).toHaveCount(19);
+  const geometry = await list.evaluate(element => ({
+    height:element.clientHeight, rowHeight:element.querySelector("button")!.getBoundingClientRect().height,
+    scrollHeight:element.scrollHeight, overflow:getComputedStyle(element).overflowY,
+  }));
+  expect(geometry.height).toBeCloseTo(geometry.rowHeight * 6, 0);
+  expect(geometry.scrollHeight).toBeGreaterThan(geometry.height);
+  expect(geometry.overflow).toBe("scroll");
+  await list.getByRole("button",{name:/Investor 19/}).click();
+  await expect(page.getByRole("heading",{name:"Investor 19",exact:true})).toBeVisible();
+  expect(await list.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+  expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
+});
