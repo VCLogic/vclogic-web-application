@@ -356,7 +356,7 @@ After Python changes, restart the application. After frontend changes, rebuild `
 | `web/frontend/` | React application, frontend tests, and browser checks. |
 | `tests/web/` | Backend API and service tests. |
 | `scripts/` | Scoped legacy migration, dossier export, and portrait utilities. |
-| `docs/` | Extraction notes, product reference, and implementation records. |
+| `docs/` | Optional local notes and implementation records; ignored by Git. |
 
 The engine owns execution and investor data; this repository owns the web interface and API integration. Runtime artifacts live in the configured assessment workspace. Back up its project/session outputs together with `outputs/web-investors` to preserve settings, retained versions, and dossier evidence. Secrets, dependencies, build products, and runtime outputs are excluded from Git.
 
@@ -402,7 +402,10 @@ would require migrating that compatibility configuration and anonymizing the
 tests and documentation; ignoring those source files would break reproducible
 installs and tests.
 
-Further context: [extraction notes](docs/EXTRACTION.md), [historical web reference](docs/WEB_REFERENCE.md), [product notes](PRODUCT.md), and [design notes](DESIGN.md). This application was extracted from `vc-digital-twins/langgraph-vc-clone-framework`.
+The `docs/` directory is kept locally and excluded from Git. Existing local
+notes remain available, but fresh clones do not include them. See the tracked
+[product notes](PRODUCT.md) and [design notes](DESIGN.md). This application was
+extracted from `vc-digital-twins/langgraph-vc-clone-framework`.
 
 ### Refreshed memories and earlier dossiers
 
