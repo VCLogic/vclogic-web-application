@@ -164,7 +164,10 @@ test("investor gallery cards preserve intrinsic content at 1347px and enlarged t
   expect(defaultGeometry.cardCount).toBeGreaterThan(0);
   expect(defaultGeometry.summaryCount).toBe(defaultGeometry.influenceSectionCount);
   expect(defaultGeometry.influenceRowCount).toBeGreaterThanOrEqual(defaultGeometry.summaryCount);
-  expect(defaultGeometry.maxCardHeight).toBeLessThanOrEqual(760);
+  // Current wiki summaries can grow; the portrait must stay within six rows.
+  const portraitHeight = await page.locator('.preview-portrait').evaluate(el => el.getBoundingClientRect().height);
+  const listHeight = await page.locator('.investor-register-list').evaluate(el => el.clientHeight);
+  expect(portraitHeight).toBeCloseTo(listHeight, 0);
   expect(defaultGeometry.influencesFitWidth).toBe(true);
   expect(defaultGeometry.influenceRowsClearActions).toBe(true);
   expect(defaultGeometry.cardsFitContent).toBe(true);
@@ -180,6 +183,7 @@ test("investor gallery cards preserve intrinsic content at 1347px and enlarged t
   expect(enlargedGeometry.influenceRowsClearActions).toBe(true);
   expect(enlargedGeometry.cardsFitContent).toBe(true);
   expect(enlargedGeometry.actionsInFlow).toBe(true);
+  expect(await page.locator('.preview-portrait').evaluate(el => el.getBoundingClientRect().height)).toBeCloseTo(portraitHeight, 0);
   expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
 });
 
@@ -447,4 +451,22 @@ test("investor register shows six rows and scrolls to the remaining profiles", a
   await expect(page.getByRole("heading",{name:"Investor 19",exact:true})).toBeVisible();
   expect(await list.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
   expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
+});
+
+test("live wiki chapters load and citations open exact evidence", async ({ page }) => {
+  const response = await page.request.get('/api/investors?include_unavailable=true');
+  expect(response.ok()).toBe(true);
+  const { investors } = await response.json();
+  const investor = investors.find((row: { evidence_basis?: string; evidence_count?: number }) => row.evidence_basis === 'wiki' && (row.evidence_count ?? 0) > 0);
+  test.skip(!investor, 'Requires a local generated wiki with cited evidence');
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(`/profiles/${investor.vc_slug}`);
+  const reader = page.locator('.investment-memory-library .memory-reader');
+  await reader.getByText('Read complete chapter', { exact: true }).click();
+  await expect(reader.locator('.memory-body')).not.toBeEmpty();
+  await reader.locator('.memory-body button').filter({ hasText: 'ev evidence' }).first().click();
+  await expect(page.locator('.memory-result')).toHaveCount(1);
+  await expect(page.locator('.memory-result-excerpt')).not.toBeEmpty();
+  expect(errors).toEqual([]);
 });
