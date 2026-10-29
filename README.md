@@ -145,7 +145,7 @@ investor names and firms are masked in narrative text and live updates; external
 source URLs are omitted. Navigate from the gallery to use aliased profile URLs.
 
 Screenshot mode is read-only: it cannot start paid runs, submit answers, or save
-settings. Existing results remain readable. Select **Screenshot mode · Exit** in
+settings. Existing results remain readable. Select **Exit** in
 the header, or open `/?screenshots=0`, to return to normal operation. No stored
 VC data is changed. Rebuild the frontend after installing this change.
 

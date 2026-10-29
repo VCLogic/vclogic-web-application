@@ -494,7 +494,7 @@ test("screenshot mode masks identities across gallery, dossiers and settings", a
   await page.getByRole('link', {name:'Settings',exact:true}).click();
   await expect(page.getByText(/Investor #\d+/).first()).toBeVisible();
   await assertMasked();
-  await page.getByRole('link', {name:'Screenshot mode · Exit'}).click();
+  await page.getByRole('link', {name:'Exit'}).click();
   await expect(page.locator('.preview-body[aria-hidden=false] h3')).not.toHaveText(/Investor #\d+/);
 });
 
