@@ -1,4 +1,5 @@
 """Active-version profiles, with explicit read-only previews and legacy references."""
+import tomllib
 from .investor_catalog import InvestorCatalog
 from vc_clone_graph.rehearsal_runtime import _registry_profile
 from .profiles import ProfileService
@@ -14,6 +15,26 @@ class CatalogProfiles:
         self.portraits = PortraitCache(catalog.workspace)
         self.wikis = WikiLibrary(catalog.workspace, self.portraits, wiki_roots)
         self._services: dict[tuple, ProfileService] = {}
+
+    def identities(self):
+        rows = {}
+        roots = [self.catalog.workspace.parent / 'vc-digital-twins/langgraph-vc-clone-framework/inputs/investors',
+                 self.catalog.workspace / 'inputs/investors']
+        for path in (path for root in roots for path in root.glob('*.toml')):
+            try:
+                row = tomllib.loads(path.read_text())
+                slug = row['vc_slug']
+                rows[slug] = {key: row.get(key) or rows.get(slug, {}).get(key, '') for key in ('vc_slug', 'display_name', 'firm')}
+            except (OSError, ValueError, KeyError):
+                continue
+        for slug in self.wikis.slugs():
+            service = self.wikis.service(slug)
+            if service:
+                card = service.list_profiles()[0]
+                existing = rows.get(slug, {})
+                rows[slug] = dict(vc_slug=slug, display_name=card.display_name,
+                                  firm=card.firm or existing.get('firm', ''))
+        return tuple(rows[slug] for slug in sorted(rows))
 
     def _runtime_service(self, slug, state=None):
         state = state or next((row for row in self.catalog.settings()['investors'] if row['vc_slug'] == slug), None)

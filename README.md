@@ -125,35 +125,51 @@ The uv configuration installs the sibling engine in editable mode. The applicati
 
 The application discovers current generated wikis for reading and prepared bundles for assessment. It does not run onboarding or build missing indexes through the browser. Historical sessions retain their original investor version when you change the active selection.
 
-## Anonymized screenshots
+## Anonymous mode and recorded ShiftPilot demonstration
 
-For a complete fictional walkthrough, open `/demo` or select **View fictional
-example** on the home page. It compares three numbered investors, continues with
-the highest initial fit (Investor #2), and reveals three scripted questions and
-answers before showing the original and revised pitch side by side. **Show
-complete example** reveals every step for screenshots; **Reset example** starts
-again. All facts and scores are illustrative, including a score decrease when a
-revenue claim is corrected. The demo makes no API/model calls and does not write
-projects, assessments, or rehearsals. It works without local investor data.
+Select **Anonymize** in the header, or open `/?anonymous=1`. Names become
+`Investor #1`, etc.; funds and firms become `Investment firm`; portraits use a
+neutral placeholder. The mode persists in the current browser tab. Select
+**Exit** or open `/?anonymous=0` to restore names. The old `?screenshots=1` URL
+remains supported.
 
-Open `http://localhost:8001/?screenshots=1` (or add `?screenshots=1` to your
-application URL). Screenshot mode persists within that browser tab as you
-navigate through the gallery, dossiers, settings, saved assessments, and
-rehearsals. Investors receive deterministic `Investor #1`, `Investor #2`, etc.
-aliases for the current catalog, with neutral placeholder portraits. Known
-investor names and firms are masked in narrative text and live updates; external
-source URLs are omitted. Navigate from the gallery to use aliased profile URLs.
+Anonymous mode is a functional display mode: assessments, comparisons, pitch
+editing, and rehearsal answers still work. Investor aliases are translated back
+to real identifiers for requests. Normal provider-cost confirmations and saved
+version checks still apply. General profile biographies are replaced by a neutral
+summary because they can identify a firm even when metadata is incomplete.
 
-Screenshot mode is read-only: it cannot start paid runs, submit answers, or save
-settings. Existing results remain readable. Select **Exit** in
-the header, or open `/?screenshots=0`, to return to normal operation. No stored
-VC data is changed. Rebuild the frontend after installing this change.
+This is not anonymized storage or access control: the backend and browser network
+responses retain original identities. Known names, firms, and source URLs are
+masked in rendered content. Review free text before publication; unregistered
+aliases and distinctive portfolio details can still identify an investor.
 
-This is visual masking for screenshots, not an anonymized data export or access
-control. The browser still receives original API data. Review screenshots before
-sharing: distinctive quotations, portfolio companies, and names absent from the
-catalog can still identify an investor. Capture the page rather than browser
-developer tools or an old URL containing a real investor slug.
+Open `/demo` or `/demo/shiftpilot` for the **recorded ShiftPilot replay**. The local
+example compares three archived assessments using the same verified pitch,
+selects the highest initial fit, and reveals four recorded questions, founder
+answers, per-answer score changes, and final synthesis. **Show complete run**
+reveals everything for screenshots. Recorded model recommendations explain how
+to revise the pitch. The revision draft appends the actual founder clarifications;
+it is editorial output, has no new model score, and does not replace the saved
+original pitch. These are historical model runs on a demo pitch, not fresh runs
+against current Investment Memories or real-world investment probabilities.
+
+The replay is served from the assessment workspace's ignored
+`outputs/demos/shiftpilot.json`; real VC data is not included in this repository.
+Install a replay from existing local artifacts with:
+
+```bash
+uv run python scripts/export_rehearsal_demo.py \
+  --assessments /path/to/first/assessment.json /path/to/second/assessment.json /path/to/third/assessment.json \
+  --session /path/to/completed/rehearsal \
+  --registries /path/to/source/inputs/investors \
+  --output ../vclogic-vc-agentic-assessment/outputs/demos/shiftpilot.json
+```
+
+Export verifies the rehearsal artifacts, matching pitch hashes, baseline score,
+selected investor, and continuous turn scores. A missing export produces an
+explicit unavailable page. The independent, wholly fictional walkthrough remains
+at `/demo/fictional`; its facts and scores are invented and clearly labeled.
 
 ## Live Investment Memory integration
 

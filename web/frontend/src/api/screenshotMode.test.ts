@@ -25,18 +25,11 @@ it('persists mode across navigation and explicitly exits', () => {
   window.history.replaceState({}, '', '/?screenshots=0'); expect(screenshotMode()).toBe(false);
 });
 
-it('blocks writes before any network request in screenshot mode', async () => {
-  window.history.replaceState({}, '', '/?screenshots=1');
-  const fetch=vi.fn(); vi.stubGlobal('fetch',fetch);
-  await expect(api.updateInvestorSettings('investor-1',{enabled:false,active_version:null})).rejects.toThrow('read-only');
-  expect(fetch).not.toHaveBeenCalled();
-});
-
 it('masks saved assessment narratives and translates alias routes back for reads', async () => {
   window.history.replaceState({}, '', '/?screenshots=1');
   const identities = {investors:[{vc_slug:'example-person',display_name:'Example Person',firm:'Sample Ventures'}]};
   const fetch=vi.fn().mockImplementation((path:string) => Promise.resolve(new Response(JSON.stringify(
-    path === '/api/settings/investors' || path === '/api/investors?include_unavailable=true'
+    path === '/api/investors/identities'
       ? identities : {vc_slug:'example-person',decision_summary:'Example Person at Sample Ventures would invest.',citations:[{title:'Person interview',source_url:'https://example.org/person'}]},
   ))));
   vi.stubGlobal('fetch',fetch);
@@ -61,4 +54,15 @@ it('retains firm aliases from duplicate identities with less complete metadata',
     {vc_slug:'avery-reed',display_name:'Avery Reed',firm:''},
   ]);
   expect(mask.mask('Example Capital')).toBe('Investment firm');
+});
+
+
+it('supports anonymous-mode actions while translating only exact investor identifiers', async () => {
+  window.history.replaceState({}, '', '/?anonymous=1');
+  const fetch=vi.fn().mockImplementation(() => Promise.resolve(new Response('{}')));
+  vi.stubGlobal('fetch',fetch);
+  await api.startAssessment('project','version','investor-1','version-hash');
+  expect(fetch).toHaveBeenLastCalledWith('/api/projects/project/versions/version/assessments',expect.objectContaining({method:'POST',body:JSON.stringify({vc_slug:'example-person',investor_version_id:'version-hash',authorize_provider_cost:true})}));
+  const presentation=createScreenshotMask([{vc_slug:'example-person',display_name:'Example Person'}]);
+  expect(presentation.originalData({selected:['investor-1'],versions:{'investor-1':'hash'},answer:'Ask investor-1 about the pitch.'})).toEqual({selected:['example-person'],versions:{'example-person':'hash'},answer:'Ask investor-1 about the pitch.'});
 });

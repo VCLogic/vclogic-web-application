@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <NavLink to="/sessions">Rehearsals</NavLink>
         <NavLink to="/settings/investors">Settings</NavLink>
       </nav>
-      <p className={`header-method${screenshotMode() ? " screenshot-mode-status" : ""}`}>{screenshotMode() ? <a href="/?screenshots=0">Exit</a> : "Evidence-grounded decision rehearsal"}</p>
+      <p className="header-method screenshot-mode-status">{screenshotMode() ? <a href="/?anonymous=0">Exit</a> : <a href="/?anonymous=1">Anonymize</a>}</p>
     </header>
     <main id="main-content">{children}</main>
   </div>;

@@ -30,6 +30,7 @@ from .profiles import ProfileService
 from .investor_catalog import InvestorCatalog
 from .catalog_profiles import CatalogProfiles
 from .wiki_profiles import WikiChangedError
+from .recorded_demo import load_recorded_demo
 from .investor_specifications import specifications
 from vc_clone_graph.rehearsal_config import load_rehearsal_config
 from .service import RehearsalWebService
@@ -159,6 +160,20 @@ def create_app(
         return JSONResponse(
             status_code=409, content=payload.model_dump(by_alias=True)
         )
+
+    @app.get("/api/demo/recorded")
+    def recorded_demo():
+        try:
+            return load_recorded_demo(workspace)
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=404, detail="No verified recorded demo is installed in this workspace.") from exc
+
+    @app.get("/api/investors/identities")
+    def investor_identities():
+        # Identity display must not wait for assessment-index validation.
+        if not isinstance(profiles(), CatalogProfiles):
+            return {"investors": profiles().list_profiles()}
+        return {"investors": profiles().identities()}
 
     @app.get("/api/investors", response_model=InvestorListResponse)
     def investors(include_unavailable: bool = False) -> InvestorListResponse:

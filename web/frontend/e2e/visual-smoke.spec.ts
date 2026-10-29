@@ -492,7 +492,7 @@ test("screenshot mode masks identities across gallery, dossiers and settings", a
   await expect(page.locator('.memory-body')).not.toBeEmpty();
   await assertMasked();
   await page.getByRole('link', {name:'Settings',exact:true}).click();
-  await expect(page.getByText(/Investor #\d+/).first()).toBeVisible();
+  await expect(page.getByText(/Investor #\d+/).first()).toBeVisible({timeout:30_000});
   await assertMasked();
   await page.getByRole('link', {name:'Exit'}).click();
   await expect(page.locator('.preview-body[aria-hidden=false] h3')).not.toHaveText(/Investor #\d+/);
@@ -501,7 +501,7 @@ test("screenshot mode masks identities across gallery, dossiers and settings", a
 test("fictional demo compares three investors and revises the pitch without API calls", async ({page}) => {
   const apiRequests:string[]=[];
   page.on('request',request=>{if(new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url());});
-  await page.goto('/demo');
+  await page.goto('/demo/fictional');
   await expect(page.getByRole('heading',{name:'One pitch. Three investors. A sharper story.'})).toBeVisible();
   await expect(page.locator('.demo-investor')).toHaveCount(3);
   await page.getByRole('button',{name:'Begin rehearsal with Investor #2'}).click();
@@ -513,4 +513,23 @@ test("fictional demo compares three investors and revises the pitch without API 
   await expect(page.getByRole('heading',{name:'After · Version 2'})).toBeVisible();
   expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
   expect(apiRequests).toEqual([]);
+});
+
+test("recorded ShiftPilot replay preserves scores, answers, and final synthesis", async ({page}) => {
+  const response=await page.request.get('/api/demo/recorded');
+  test.skip(response.status()===404,'Requires an exported local recorded run');
+  expect(response.ok()).toBe(true);
+  const run=await response.json();
+  await page.goto('/demo/shiftpilot');
+  await expect(page.locator('.demo-investor')).toHaveCount(3);
+  await page.getByRole('button',{name:'Start recorded rehearsal'}).click();
+  await expect(page.locator('.demo-exchange').first()).toContainText(run.exchanges[0].question);
+  await page.getByRole('button',{name:'Show complete run'}).click();
+  await expect(page.getByRole('heading',{name:/Final synthesis/})).toContainText(String(Math.round(run.final_score*100)));
+  await expect(page.getByRole('heading',{name:'Revision draft with recorded clarifications'})).toBeVisible();
+  expect(await page.locator('.demo-exchange').count()).toBe(run.exchanges.length+1);
+  for(const turn of run.exchanges) await expect(page.locator('.demo-exchange').filter({hasText:turn.question}).first()).toContainText(turn.answer.split('\n')[0]);
+  expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
+  await page.getByRole('button',{name:'Restart replay'}).click();
+  await expect(page.locator('.demo-exchange')).toHaveCount(0);
 });

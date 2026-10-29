@@ -154,3 +154,12 @@ def test_changed_wiki_is_not_advertised_as_the_old_assessment_input(tmp_path):
     card=profiles.list_profiles(include_unavailable=True)[0]
     assert not card.start_available and card.memory_version!=service.memory_version
     assert c._preferences()['new-vc']['active_version']==vid
+
+
+def test_anonymous_identity_catalog_does_not_validate_assessment_indexes(tmp_path, monkeypatch):
+    c=catalog(tmp_path); wiki(c.workspace.parent/'vclogic-vc-investment-memory/wiki')
+    def forbidden(*args,**kwargs): raise AssertionError('runtime scan during anonymous identity lookup')
+    monkeypatch.setattr(c,'settings',forbidden)
+    monkeypatch.setattr(c,'refresh',forbidden)
+    rows=CatalogProfiles(c).identities()
+    assert rows[0]['vc_slug']=='new-vc' and rows[0]['display_name']=='New VC-like Investor'
