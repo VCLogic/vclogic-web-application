@@ -515,12 +515,14 @@ test("fictional demo compares three investors and revises the pitch without API 
   expect(apiRequests).toEqual([]);
 });
 
-test("recorded ShiftPilot replay preserves scores, answers, and final synthesis", async ({page}) => {
+test("recorded anonymous replay preserves scores, answers, and final synthesis", async ({page}) => {
   const response=await page.request.get('/api/demo/recorded');
   test.skip(response.status()===404,'Requires an exported local recorded run');
   expect(response.ok()).toBe(true);
   const run=await response.json();
-  await page.goto('/demo/shiftpilot');
+  await page.goto('/demo');
+  await expect(page.getByRole('heading', {name:'Company #1: three investors, one rehearsal'})).toBeVisible();
+  await expect(page.locator('body')).not.toContainText(/shiftpilot/i);
   await expect(page.locator('.demo-investor')).toHaveCount(3);
   await page.getByRole('button',{name:'Start recorded rehearsal'}).click();
   await expect(page.locator('.demo-exchange').first()).toContainText(run.exchanges[0].question);

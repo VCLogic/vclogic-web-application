@@ -125,7 +125,7 @@ The uv configuration installs the sibling engine in editable mode. The applicati
 
 The application discovers current generated wikis for reading and prepared bundles for assessment. It does not run onboarding or build missing indexes through the browser. Historical sessions retain their original investor version when you change the active selection.
 
-## Anonymous mode and recorded ShiftPilot demonstration
+## Anonymous mode and recorded anonymous demonstration
 
 Select **Anonymize** in the header, or open `/?anonymous=1`. Names become
 `Investor #1`, etc.; funds and firms become `Investment firm`; portraits use a
@@ -144,7 +144,8 @@ responses retain original identities. Known names, firms, and source URLs are
 masked in rendered content. Review free text before publication; unregistered
 aliases and distinctive portfolio details can still identify an investor.
 
-Open `/demo` or `/demo/shiftpilot` for the **recorded ShiftPilot replay**. The local
+Open `/demo` for the **recorded anonymous replay**. The company is labeled
+`Company #1` throughout the exported pitch, answers, and recommendations. The local
 example compares three archived assessments using the same verified pitch,
 selects an investor with the highest initial fit (identifying ties), and reveals recorded questions, founder
 answers, per-answer score changes, and final synthesis. **Show complete run**

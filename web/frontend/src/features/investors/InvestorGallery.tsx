@@ -27,7 +27,7 @@ export function InvestorGallery() {
         <div className="hero-actions">
           <a href="#investors" className="button light">Choose an investor <ArrowRight size={17} /></a>
           <Link to="/sessions" className="text-link"><FolderClock size={17} /> Continue a rehearsal</Link>
-          <Link to="/demo/shiftpilot" className="text-link">Explore ShiftPilot rehearsal <ArrowRight size={17}/></Link>
+          <Link to="/demo" className="text-link">Explore anonymous rehearsal <ArrowRight size={17}/></Link>
         </div>
       </div>
       <aside className="hero-note"><b>Not a generic pitch score</b><p>Each profile is reconstructed from public theses, interviews, portfolio patterns, constraints, and observed rationales.</p><div><span>01</span> Inspect the decision model</div><div><span>02</span> Submit a pitch privately</div><div><span>03</span> Rehearse the open questions</div></aside>

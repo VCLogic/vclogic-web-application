@@ -28,7 +28,7 @@ def export(assessments, session, registries):
     selected = next((i for i, row in enumerate(rows) if row.vc_slug == view.vc_slug), None)
     if selected is None or rows[selected].investment_likelihood != view.initial_assessment.investment_likelihood:
         raise ValueError('Rehearsal baseline does not match the selected assessment')
-    replacements = {}
+    replacements = {'shiftpilot': 'Company #1'}
     labels = {row.vc_slug: f'Investor #{i + 1}' for i, row in enumerate(rows)}
     for path in Path(registries).glob('*.toml'):
         identity = tomllib.loads(path.read_text())
@@ -56,7 +56,7 @@ def export(assessments, session, registries):
     pitch = store.pitch_path.read_text()
     draft = pitch + '\n\n## Rehearsal clarifications to incorporate into the next pitch\n\n' + '\n\n'.join(
         f"### {row['question']}\n\n{row['answer']}" for row in exchanges)
-    result = RecordedDemo(company='ShiftPilot', recorded_at=store.read_json('manifest.json')['created_at'],
+    result = RecordedDemo(company='Company #1', recorded_at=store.read_json('manifest.json')['created_at'],
         pitch_sha256=digest, initial_pitch=scrub(pitch), selected=selected,
         investors=[dict(name=labels[row.vc_slug], firm=f'Firm #{i+1}', score=row.investment_likelihood,
             decision=row.decision, positives=list(row.positive_rationales), concerns=list(row.negative_rationales),
