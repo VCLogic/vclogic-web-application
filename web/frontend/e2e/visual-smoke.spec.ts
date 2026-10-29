@@ -535,3 +535,29 @@ test("recorded anonymous replay preserves scores, answers, and final synthesis",
   await page.getByRole('button',{name:'Restart replay'}).click();
   await expect(page.locator('.demo-exchange')).toHaveCount(0);
 });
+
+test('saved pitch journey opens the normal comparison and improving discussion anonymously', async ({page}) => {
+  const response=await page.request.get('/api/projects');
+  const projects=(await response.json()).projects;
+  const project=projects.find((row:any)=>row.assessment_count>=3 && row.rehearsal_count>0);
+  test.skip(!project,'Requires a local project with a saved three-investor rehearsal');
+  await page.goto('/?anonymous=1');
+  const story=page.getByRole('complementary',{name:'Saved pitch journey'});
+  await expect(story).toBeVisible();
+  await expect(story).toContainText('61 → 71/100');
+  await story.getByRole('link',{name:'1 · Read the pitch'}).click();
+  await expect(page).toHaveURL(/\/pitches\/.*\/versions\//);
+  await expect(page.locator('.workspace-heading').getByRole('heading',{name:'Company #1',exact:true})).toBeVisible();
+  await expect(page.locator('.project-pitch-sheet')).toContainText('Company #1');
+  await expect(page.locator('body')).not.toContainText(/shiftpilot/i);
+  await page.getByRole('tab',{name:'Investor comparison',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Who should assess this pitch?'})).toBeVisible();
+  await expect(page.locator('.investor-comparison > ol > li')).toHaveCount(3);
+  await expect(page.locator('body')).not.toContainText(/shiftpilot/i);
+  await page.goto('/?anonymous=1');
+  await page.getByRole('link',{name:'3 · Follow the discussion'}).click();
+  await expect(page).toHaveURL(/\/sessions\//);
+  await expect(page.locator('.completed-rehearsal')).toBeVisible();
+  await expect(page.locator('body')).not.toContainText(/shiftpilot|elizabeth yin|hustle fund/i);
+  expect(await documentOverflow(page)).toBeLessThanOrEqual(1);
+});

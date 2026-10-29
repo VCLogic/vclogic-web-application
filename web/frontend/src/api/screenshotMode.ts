@@ -10,7 +10,9 @@ export function screenshotMode(): boolean {
 
 const escapePattern = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-export function createScreenshotMask(identities: Identity[]) {
+type Company = {project_id:string;display_name:string;aliases:string[]};
+
+export function createScreenshotMask(identities: Identity[], companies: Company[] = []) {
   const unique = [...new Map(identities.map(row => [row.vc_slug, row])).values()]
     .sort((a, b) => a.vc_slug.localeCompare(b.vc_slug));
   const aliases = new Map(unique.map((row, index) => [row.vc_slug, `investor-${index + 1}`]));
@@ -32,6 +34,10 @@ export function createScreenshotMask(identities: Identity[]) {
     remember(firm, 'Investment firm');
     const short = firm.replace(/\s+(?:ventures|venture partners|capital|fund|partners|group)$/i, '').trim();
     if (short.length > 3 && short !== firm) remember(short, 'Investment firm');
+  }
+  for (const [index, company] of [...companies].sort((a,b)=>a.project_id.localeCompare(b.project_id)).entries()) {
+    const alias = `Company #${index+1}`;
+    for (const name of [company.display_name,...company.aliases]) if (name.trim()) remember(name,alias);
   }
   const names = [...words.keys()].filter(Boolean).sort((a, b) => b.length - a.length);
   const pattern = names.length ? new RegExp(`\\b(?:${names.map(name => name.split(' ').map(escapePattern).join('[\\s_-]+')).join('|')})\\b`, 'gi') : null;
@@ -74,6 +80,6 @@ export function screenshotMask() {
   return prepared ??= fetch('/api/investors/identities').then(async response => {
     if (!response.ok) throw new Error('Cannot prepare anonymous mode.');
     const payload = await response.json();
-    return createScreenshotMask(payload.investors);
+    return createScreenshotMask(payload.investors, payload.companies);
   }).catch(() => { prepared = undefined; throw new Error('Cannot prepare anonymous mode.'); });
 }

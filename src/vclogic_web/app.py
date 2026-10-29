@@ -171,9 +171,11 @@ def create_app(
     @app.get("/api/investors/identities")
     def investor_identities():
         # Identity display must not wait for assessment-index validation.
-        if not isinstance(profiles(), CatalogProfiles):
-            return {"investors": profiles().list_profiles()}
-        return {"investors": profiles().identities()}
+        investors = profiles().identities() if isinstance(profiles(), CatalogProfiles) else profiles().list_profiles()
+        projects = session_backend.project_store.list_projects() if session_backend is not None else ()
+        companies = [dict(project_id=row.project_id, display_name=row.display_name, aliases=row.company_aliases)
+                     for row in projects]
+        return {"investors": investors, "companies": companies}
 
     @app.get("/api/investors", response_model=InvestorListResponse)
     def investors(include_unavailable: bool = False) -> InvestorListResponse:

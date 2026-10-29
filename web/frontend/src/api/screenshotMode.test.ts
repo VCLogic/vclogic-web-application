@@ -66,3 +66,11 @@ it('supports anonymous-mode actions while translating only exact investor identi
   const presentation=createScreenshotMask([{vc_slug:'example-person',display_name:'Example Person'}]);
   expect(presentation.originalData({selected:['investor-1'],versions:{'investor-1':'hash'},answer:'Ask investor-1 about the pitch.'})).toEqual({selected:['example-person'],versions:{'example-person':'hash'},answer:'Ask investor-1 about the pitch.'});
 });
+
+
+it('masks saved company identities throughout pitches and discussions without changing source text', () => {
+  const presentation=createScreenshotMask([], [{project_id:'project',display_name:'Acme Staffing',aliases:['AcmeStaff','Acme Staffing']}]);
+  const original={pitch:'AcmeStaff has recurring revenue.',answer:'ACME STAFFING retained its customers.',company_aliases:['AcmeStaff']};
+  expect(presentation.mask(original)).toEqual({pitch:'Company #1 has recurring revenue.',answer:'Company #1 retained its customers.',company_aliases:['Company #1']});
+  expect(original.pitch).toContain('AcmeStaff');
+});

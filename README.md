@@ -133,6 +133,11 @@ neutral placeholder. The mode persists in the current browser tab. Select
 **Exit** or open `/?anonymous=0` to restore names. The old `?screenshots=1` URL
 remains supported.
 
+Saved company names and aliases are also masked throughout pitches, assessments,
+and rehearsal discussions. The home page links qualifying saved projects directly
+to their pitch, investor comparison, and completed discussion. These links use
+the normal application workflow, not the separate replay page.
+
 Anonymous mode is a functional display mode: assessments, comparisons, pitch
 editing, and rehearsal answers still work. Investor aliases are translated back
 to real identifiers for requests. Normal provider-cost confirmations and saved
