@@ -7,7 +7,6 @@ import { DecisionInfluenceSummary } from "../../components/DecisionInfluenceSumm
 import { InvestorPortrait } from "../../components/InvestorPortrait";
 import { SimulationBadge } from "../../components/SimulationBadge";
 import "./investors.css";
-import { SavedPitchStory } from "./SavedPitchStory";
 
 export function InvestorGallery() {
   const { data, isPending, error } = useQuery({ queryKey: ["investor-gallery"], queryFn: api.investorsForGallery, refetchInterval: 30_000 });
@@ -33,7 +32,6 @@ export function InvestorGallery() {
       </div>
       <aside className="hero-note"><b>Not a generic pitch score</b><p>Each profile is reconstructed from public theses, interviews, portfolio patterns, constraints, and observed rationales.</p><div><span>01</span> Inspect the decision model</div><div><span>02</span> Submit a pitch privately</div><div><span>03</span> Rehearse the open questions</div></aside>
     </div>
-    <SavedPitchStory/>
     <div className="gallery-heading" id="investors"><div><span className="eyebrow">Available profiles</span><h2>Choose whose questions you want to face</h2></div></div>
     {!data?.investors.length && <div className="dark-state"><h2>No investors are available yet</h2><p>Enable a ready investor version in Settings to start an assessment.</p><Link className="button light" to="/settings/investors">Open investor settings</Link></div>}
     <div className="investor-register">

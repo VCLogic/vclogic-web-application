@@ -134,9 +134,8 @@ neutral placeholder. The mode persists in the current browser tab. Select
 remains supported.
 
 Saved company names and aliases are also masked throughout pitches, assessments,
-and rehearsal discussions. The home page links qualifying saved projects directly
-to their pitch, investor comparison, and completed discussion. These links use
-the normal application workflow, not the separate replay page.
+and rehearsal discussions. Saved projects and completed discussions remain
+available through **My Pitches** and **Rehearsals**.
 
 Anonymous mode is a functional display mode: assessments, comparisons, pitch
 editing, and rehearsal answers still work. Investor aliases are translated back
