@@ -1,6 +1,6 @@
 type Identity = { vc_slug: string; display_name: string; firm?: string };
 const normalizedWords = (value: string) => value.trim().toLowerCase().replace(/[\s_-]+/g, ' ');
-const storageKey = 'vclogic-screenshot-mode';
+const storageKey = 'vclogic-anonymous-mode';
 
 export function screenshotMode(): boolean {
   const parameter = new URLSearchParams(window.location.search).get('anonymous') ?? new URLSearchParams(window.location.search).get('screenshots');

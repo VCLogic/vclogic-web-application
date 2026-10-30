@@ -20,9 +20,9 @@ export function SavedPitchStory() {
     <p>Read the saved pitch, compare its investor assessments, then follow the founder’s answers and their effect on the investment judgment.</p>
     {initial!=null && final!=null && <p><strong>{Math.round(initial*100)} → {Math.round(final*100)}/100</strong> · Recorded funding likelihood after the discussion. This is a model judgment, not a calibrated probability.</p>}
     <div className="hero-actions">
-      <a className="button light" href={`${path}?tab=pitch&anonymous=1`}>1 · Read the pitch</a>
-      <a className="text-link" href={`${path}?tab=comparison&anonymous=1`}>2 · Compare investors</a>
-      <a className="text-link" href={`/sessions/${session.session_id}?anonymous=1`}>3 · Follow the discussion</a>
+      <a className="button light" href={`${path}?tab=pitch`}>1 · Read the pitch</a>
+      <a className="text-link" href={`${path}?tab=comparison`}>2 · Compare investors</a>
+      <a className="text-link" href={`/sessions/${session.session_id}`}>3 · Follow the discussion</a>
     </div>
   </aside>;
 }
