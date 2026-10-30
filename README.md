@@ -14,6 +14,18 @@ Investor profiles are simulations based on source evidence. They do not represen
 - **Manage investors:** automatically discover prepared onboarding bundles, enable or disable investors, and select one active version per investor.
 - **Inspect specifications:** view version-specific taxonomy, model and token settings, retrieval configuration, and rehearsal policies.
 
+## Screenshots
+
+**Assessment dossier.** Review estimated investor fit, supporting rationales, unresolved concerns, and linked evidence before starting a rehearsal.
+
+![VCLogic assessment dossier showing investor fit, rationale categories, and supporting evidence](screenshots/6.png)
+
+**Founder rehearsal.** Follow investor-style questions, founder answers, and follow-up questions tied to the investment rationales.
+
+![VCLogic rehearsal conversation showing a founder response and an evidence-focused follow-up question](screenshots/7.png)
+
+[Browse all screenshots](screenshots/). These supplied captures include blurred details; some older captures retain the former InvestorLens branding.
+
 ## Dependencies across VCLogic repositories
 
 The [VCLogic organization](https://github.com/VCLogic) separates source collection, investor knowledge, onboarding, assessment execution, and the web interface:
