@@ -240,3 +240,29 @@ def test_deleted_rehearsal_is_forgotten_by_its_assessment(tmp_path) -> None:
     service.unregister_rehearsal("session-1")
 
     assert service.get_assessment(row.assessment_id).rehearsal_session_ids == ("session-2",)
+
+
+def test_assessment_left_queued_by_an_earlier_process_reports_stalled_and_reruns(tmp_path) -> None:
+    store = PitchProjectStore(tmp_path / "projects")
+    project = _project(store)
+
+    def builder(**kwargs):
+        return _baseline(kwargs["session_root"] / "run")
+
+    def service():
+        return CanonicalAssessmentService(
+            store=store, workspace=tmp_path, rehearsal_config=SimpleNamespace(), baseline_builder=builder
+        )
+
+    before = service()
+    row = before.ensure_assessment(
+        project.project_id, project.current_version_id, "elizabeth-yin-hustle-fund"
+    )
+    assert before.get_assessment(row.assessment_id).status == "queued"
+
+    restarted = service()
+    stalled = restarted.get_assessment(row.assessment_id)
+    assert stalled.status == "failed"
+    assert "Not running" in stalled.public_error
+
+    assert restarted.run_assessment(row.assessment_id).status == "complete"

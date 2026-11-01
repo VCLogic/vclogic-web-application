@@ -25,6 +25,12 @@ class AssessmentBusyError(RuntimeError):
     pass
 
 
+STALLED = (
+    "Not running: it was never started or the web app restarted. Authorize provider "
+    "API costs and update the comparison to run it."
+)
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -57,6 +63,7 @@ class CanonicalAssessmentService:
         self.baseline_builder = baseline_builder
         self._guard = RLock()
         self._active: set[str] = set()
+        self._started = _now()
 
     def _assessment_root(self, project_id: str, version_id: str, vc_slug: str) -> Path:
         if not vc_slug or any(part in vc_slug for part in ("/", "\\", "..")):
@@ -266,7 +273,18 @@ class CanonicalAssessmentService:
             citations.append(citation)
         return tuple(citations)
 
+    def _stalled(self, row: CanonicalAssessmentDetail) -> CanonicalAssessmentDetail:
+        """Unfinished work from before this process started has no job and never resumes."""
+        if (
+            row.status not in ("queued", "running")
+            or row.updated_at >= self._started
+            or row.assessment_id in self._active
+        ):
+            return row
+        return row.model_copy(update={"status": "failed", "public_error": STALLED})
+
     def _present(self, path: Path, row: CanonicalAssessmentDetail) -> CanonicalAssessmentDetail:
+        row = self._stalled(row)
         return row.model_copy(
             update={
                 "decision_summary": self._summary(row),
