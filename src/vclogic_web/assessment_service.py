@@ -430,3 +430,19 @@ class CanonicalAssessmentService:
             )
             _write(manifest, updated.model_dump(by_alias=True, mode="json"))
             return updated
+
+    def unregister_rehearsal(self, session_id: str) -> None:
+        """Forget a deleted rehearsal on every assessment that started it."""
+        with self._guard:
+            for manifest in self.store.root.glob("*/versions/*/assessments/*/assessment.json"):
+                try:
+                    current = self._read(manifest)
+                except ValueError:
+                    continue
+                if session_id not in current.rehearsal_session_ids:
+                    continue
+                sessions = tuple(row for row in current.rehearsal_session_ids if row != session_id)
+                updated = current.model_copy(
+                    update={"rehearsal_session_ids": sessions, "updated_at": _now()}
+                )
+                _write(manifest, updated.model_dump(by_alias=True, mode="json"))

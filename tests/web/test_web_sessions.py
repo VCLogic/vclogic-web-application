@@ -60,6 +60,13 @@ class FakeRehearsalService:
     def verify(self, session_id):
         return {"session_id": session_id, "verified": True}
 
+    def delete_session(self, session_id):
+        if self.busy:
+            raise SessionBusyError(f"rehearsal is still running: {session_id}")
+        if session_id != "session-1":
+            raise ValueError(f"unknown rehearsal session: {session_id}")
+        self.deleted = session_id
+
 
 def test_create_session_authorizes_and_queues_canonical_pipeline() -> None:
     service = FakeRehearsalService()
@@ -149,3 +156,16 @@ def test_export_is_downloadable_zip() -> None:
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/zip"
     assert response.content == b"PK-export"
+
+
+def test_delete_session_answers_404_unknown_and_409_running() -> None:
+    service = FakeRehearsalService()
+    client = TestClient(create_app(testing=True, rehearsal_service=service))
+
+    assert client.delete("/api/sessions/session-1").status_code == 204
+    assert service.deleted == "session-1"
+    assert client.delete("/api/sessions/missing").status_code == 404
+    service.busy = True
+    response = client.delete("/api/sessions/session-1")
+    assert response.status_code == 409
+    assert response.json()["code"] == "session_busy"

@@ -37,6 +37,7 @@ async function request<T>(path:string, init?:RequestInit):Promise<T>{
     const code=body && typeof body === "object" && typeof (body as Record<string,unknown>).code === "string" ? (body as Record<string,string>).code : undefined;
     throw new ApiError(response.status,apiErrorMessage(body,response.statusText || "Request failed"),code);
   }
+  if(response.status===204)return undefined as T;
   return response.json() as Promise<T>;
 }
 export const api={
@@ -56,6 +57,7 @@ export const api={
   answer:(id:string,text:string)=>request(`/api/sessions/${id}/answers`,{method:"POST",body:JSON.stringify({text})}),
   finish:(id:string)=>request(`/api/sessions/${id}/finish`,{method:"POST"}),
   retry:(id:string)=>request(`/api/sessions/${id}/retry`,{method:"POST"}),
+  deleteSession:(id:string)=>request<void>(`/api/sessions/${id}`,{method:"DELETE"}),
   projects:()=>request<{projects:PitchProjectSummary[]}>("/api/projects"),
   createProject:(body:{display_name:string;company_aliases:string[];pitch_text:string})=>request<PitchProject>("/api/projects",{method:"POST",body:JSON.stringify(body)}),
   project:(id:string)=>request<PitchProject>(`/api/projects/${id}`),

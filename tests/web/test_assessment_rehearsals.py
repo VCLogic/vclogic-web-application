@@ -162,3 +162,47 @@ def test_busy_answer_is_rejected_before_submission_artifact_changes() -> None:
         service.answer("session-1", "A repeated answer")
 
     assert store.accepted == []
+
+
+class ForgettingAssessments:
+    def __init__(self) -> None:
+        self.forgotten = []
+
+    def unregister_rehearsal(self, session_id):
+        self.forgotten.append(session_id)
+
+
+def _deletable(tmp_path, coordinator):
+    service = object.__new__(RehearsalWebService)
+    service.output_root = (tmp_path / "rehearsals").resolve()
+    service.coordinator = coordinator
+    service.assessment_service = ForgettingAssessments()
+    service.investor_catalog = SimpleNamespace(root=tmp_path / "catalog")
+    session = service.output_root / "elizabeth-yin" / "session-1"
+    session.mkdir(parents=True)
+    (session / "manifest.json").write_text("{}")
+    (tmp_path / "catalog" / "sessions").mkdir(parents=True)
+    (tmp_path / "catalog" / "sessions" / "session-1.json").write_text("{}")
+    return service, session
+
+
+def test_deleting_a_rehearsal_removes_artifacts_and_references(tmp_path) -> None:
+    service, session = _deletable(tmp_path, JobCoordinator(executor=InlineExecutor()))
+
+    service.delete_session("session-1")
+
+    assert not session.exists()
+    assert not (tmp_path / "catalog" / "sessions" / "session-1.json").exists()
+    assert service.assessment_service.forgotten == ["session-1"]
+    with pytest.raises(ValueError):
+        service.delete_session("session-1")
+
+
+def test_running_rehearsal_cannot_be_deleted(tmp_path) -> None:
+    coordinator = JobCoordinator(executor=ManualExecutor())
+    service, session = _deletable(tmp_path, coordinator)
+    coordinator.submit("session-1", "answer", lambda _emit: None)
+
+    with pytest.raises(SessionBusyError):
+        service.delete_session("session-1")
+    assert session.exists()

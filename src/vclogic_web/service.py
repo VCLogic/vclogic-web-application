@@ -7,6 +7,7 @@ from contextlib import redirect_stdout
 from io import BytesIO, StringIO
 import json
 from pathlib import Path
+import shutil
 from typing import Any, Iterator
 from uuid import uuid4
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -354,6 +355,20 @@ class RehearsalWebService:
 
     def list_sessions(self) -> SessionListResponse:
         return SessionListResponse(sessions=list_sessions(self.output_root))
+
+    def delete_session(self, session_id: str) -> None:
+        """Remove a rehearsal's artifacts and every reference to it."""
+        if not session_id or any(part in session_id for part in ("/", "\\", "..")):
+            raise ValueError("invalid session identifier")
+        if self.coordinator.is_busy(session_id):
+            raise SessionBusyError(f"rehearsal is still running: {session_id}")
+        root = self._root(session_id)
+        if root.parent.parent != Path(self.output_root).resolve():
+            raise ValueError(f"unknown rehearsal session: {session_id}")
+        shutil.rmtree(root)
+        if self.investor_catalog is not None:
+            (self.investor_catalog.root / "sessions" / f"{session_id}.json").unlink(missing_ok=True)
+        self.assessment_service.unregister_rehearsal(session_id)
 
     def get_session(self, session_id: str) -> SessionDetailResponse:
         view = SessionViewBuilder(self._store(session_id)).build()

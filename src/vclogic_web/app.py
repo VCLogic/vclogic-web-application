@@ -354,6 +354,14 @@ def create_app(
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
+    @app.delete("/api/sessions/{session_id}", status_code=204)
+    def delete_session(session_id: str):
+        try:
+            sessions().delete_session(session_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return Response(status_code=204)
+
     @app.get("/api/sessions/{session_id}")
     def session(session_id: str):
         try:

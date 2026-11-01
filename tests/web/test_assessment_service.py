@@ -221,3 +221,22 @@ def test_running_assessment_rejects_duplicate_execution(tmp_path) -> None:
 
     with pytest.raises(AssessmentBusyError):
         service.run_assessment(row.assessment_id)
+
+
+def test_deleted_rehearsal_is_forgotten_by_its_assessment(tmp_path) -> None:
+    store = PitchProjectStore(tmp_path / "projects")
+    project = _project(store)
+    service = CanonicalAssessmentService(
+        store=store,
+        workspace=tmp_path,
+        rehearsal_config=SimpleNamespace(),
+    )
+    row = service.ensure_assessment(
+        project.project_id, project.current_version_id, "elizabeth-yin-hustle-fund"
+    )
+    service.register_rehearsal(row.assessment_id, "session-1")
+    service.register_rehearsal(row.assessment_id, "session-2")
+
+    service.unregister_rehearsal("session-1")
+
+    assert service.get_assessment(row.assessment_id).rehearsal_session_ids == ("session-2",)

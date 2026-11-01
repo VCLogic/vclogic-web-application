@@ -1,4 +1,4 @@
-import { ArrowRight, CircleAlert, Clock3, ShieldCheck } from "lucide-react";
+import { ArrowRight, CircleAlert, Clock3, ShieldCheck, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Investor, SessionSummary } from "../../api/types";
 import { InvestorPortrait } from "../../components/InvestorPortrait";
@@ -11,7 +11,7 @@ function dateLabel(raw: string) {
   return Number.isNaN(date.getTime()) ? raw : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
 
-export function ProjectCard({ session, investor }: { session: SessionSummary; investor?: Investor }) {
+export function ProjectCard({ session, investor, onDelete, deleting = false }: { session: SessionSummary; investor?: Investor; onDelete?: (session: SessionSummary) => void; deleting?: boolean }) {
   const verified = session.verification_status === "verified";
   const active = ACTIVE.has(session.status);
   const failed = session.status === "failed" || !verified;
@@ -33,6 +33,7 @@ export function ProjectCard({ session, investor }: { session: SessionSummary; in
       <strong className={session.current_decision?.toLowerCase()}>{session.current_decision || "—"}</strong>
       {session.current_likelihood != null && <b>{Math.round(session.current_likelihood * 100)}%</b>}
     </div>
+    {onDelete && !active && <button type="button" className="project-delete" aria-label={`Delete rehearsal for ${company}`} title="Delete rehearsal" disabled={deleting} onClick={() => onDelete(session)}><Trash2 size={14} /></button>}
     {verified ? <Link className="project-link" to={`/sessions/${session.session_id}`}>Resume rehearsal <ArrowRight size={15} /></Link> : <span className="project-disabled">Artifact verification failed</span>}
   </article>;
 }
