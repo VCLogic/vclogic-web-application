@@ -82,15 +82,27 @@ class RehearsalWebService:
         self.available_vc_slugs = ({
             row.vc_slug for row in list_investors(input_root)
         } if investor_catalog is None else set())
-        reference_path = (
-            self.workspace
-            / "reports/evaluation/canonical-v4-v41-portfolio-2026-08-15/phase2/predictions.csv"
+        reference_path = next(
+            (
+                path
+                for path in (
+                    self.workspace / "proposal-evaluation/data/predictions.csv",
+                    self.workspace
+                    / "reports/evaluation/canonical-v4-v41-portfolio-2026-08-15/phase2/predictions.csv",
+                )
+                if path.is_file()
+            ),
+            self.workspace / "proposal-evaluation/data/predictions.csv",
         )
         self.matching_service = matching_service or MatchingService(
             store=self.project_store,
             assessments=self.assessment_service,
             reference_scores=load_reference_scores(
-                reference_path, self.available_vc_slugs
+                reference_path,
+                None if investor_catalog is not None else self.available_vc_slugs,
+            ),
+            historical_version=(
+                investor_catalog.legacy_version if investor_catalog is not None else None
             ),
         )
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from vclogic_web.matching import MatchingService, relative_fit
+from vclogic_web.matching import MatchingService, load_reference_scores, relative_fit
 from vclogic_web.models import CanonicalAssessmentDetail
 from vclogic_web.project_store import PitchProjectStore
 
@@ -187,3 +187,37 @@ def test_comparison_supports_single_investor_and_reuses_complete_assessment(tmp_
     assert comparison.status == "complete"
     assert comparison.missing_vc_slugs == ()
     assert comparison.assessments[0].reused is True
+
+
+def test_reference_scores_read_proposal_predictions_once_per_episode(tmp_path) -> None:
+    path = tmp_path / "predictions.csv"
+    rows = ["vc_id,episode_id,stage,rationale_label,agent_likelihood"]
+    for episode in range(10):
+        for stage in ("investigator", "decision_agent"):
+            rows.append(f"charles-hudson-precursor-ventures,ep-{episode},{stage},founder_market_fit,0.{episode}")
+    rows.append("elizabeth-yin-hustle-fund,ep-1,investigator,founder_market_fit,0.4")
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+    scores = load_reference_scores(path)
+
+    assert scores["charles-hudson-precursor-ventures"] == tuple(float(f"0.{n}") for n in range(10))
+    assert scores["elizabeth-yin-hustle-fund"] == (0.4,)
+    assert "elizabeth-yin" not in scores
+
+
+def test_versioned_assessment_gets_percentile_only_on_the_historical_version(tmp_path) -> None:
+    def row(version):
+        return _assessment("a-1", "charles-hudson-precursor-ventures", 0.63).model_copy(
+            update={"investor_version_id": version}
+        )
+
+    def service(rows):
+        return MatchingService(
+            store=PitchProjectStore(tmp_path / "projects"),
+            assessments=FakeAssessments(rows),
+            reference_scores={"charles-hudson-precursor-ventures": [0.1, 0.2, 0.4, 0.63, 0.8] * 2},
+            historical_version=lambda slug: "a" * 64,
+        )
+
+    assert service([row("a" * 64)])._row(row("a" * 64)).relative_fit.percentile == 80.0
+    assert service([row("b" * 64)])._row(row("b" * 64)).relative_fit.percentile is None

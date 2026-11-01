@@ -208,6 +208,13 @@ class InvestorCatalog:
             atomic_json(self.preferences_path, preferences)
             return self._settings(preferences)
 
+    def legacy_version(self, slug: str) -> str | None:
+        """The installed workspace profile's version, which historical evaluations used."""
+        with self._guard:
+            if not getattr(self, "_versions", None):
+                self.refresh(persist_preferences=False)
+            return next((row.version_id for row in self._versions.get(slug, {}).values() if row.legacy), None)
+
     def select(self, slug: str, expected_version: str | None = None) -> ExecutionBinding:
         with self._guard:
             self.settings()

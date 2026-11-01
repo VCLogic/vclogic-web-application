@@ -47,26 +47,46 @@ def relative_fit(score: float, reference_scores: Iterable[float]) -> RelativeFit
     return RelativeFitView(percentile=percentile, reference_count=len(values))
 
 
-def load_reference_scores(path: Path, vc_slugs: Iterable[str]) -> dict[str, tuple[float, ...]]:
-    requested = tuple(vc_slugs)
-    results: dict[str, list[float]] = {slug: [] for slug in requested}
+def load_reference_scores(
+    path: Path, vc_slugs: Iterable[str] | None = None
+) -> dict[str, tuple[float, ...]]:
+    """Each investor's twin likelihoods on their historical pitches.
+
+    Reads proposal-evaluation predictions.csv (one row per rationale; vc_id, episode_id,
+    agent_likelihood) or the older canonical predictions.csv (vc_slug, investment_likelihood).
+    With vc_slugs, rows map onto those slugs (a short slug also matches "<slug>-<firm>");
+    without, every investor in the file is returned under its own slug.
+    """
+    requested = None if vc_slugs is None else tuple(vc_slugs)
+    results: dict[str, list[float]] = {slug: [] for slug in requested or ()}
     if not Path(path).is_file():
-        return {slug: () for slug in requested}
+        return {slug: () for slug in requested or ()}
+    seen: set[tuple[str, str]] = set()
     with Path(path).open(newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
-            short_slug = str(row.get("vc_slug", ""))
-            matching = next(
-                (slug for slug in requested if slug == short_slug or slug.startswith(short_slug + "-")),
-                None,
-            )
+            if "vc_id" in row:
+                short_slug, value = str(row.get("vc_id", "")), row.get("agent_likelihood")
+                episode = (short_slug, str(row.get("episode_id", "")))
+                if episode in seen:
+                    continue
+                seen.add(episode)
+            else:
+                short_slug, value = str(row.get("vc_slug", "")), row.get("investment_likelihood")
+            if requested is None:
+                matching = short_slug or None
+            else:
+                matching = next(
+                    (slug for slug in requested if slug == short_slug or slug.startswith(short_slug + "-")),
+                    None,
+                )
             if matching is None:
                 continue
             try:
-                value = float(row["investment_likelihood"])
-            except (KeyError, TypeError, ValueError):
+                value = float(value)
+            except (TypeError, ValueError):
                 continue
             if 0 <= value <= 1:
-                results[matching].append(value)
+                results.setdefault(matching, []).append(value)
     return {slug: tuple(values) for slug, values in results.items()}
 
 
@@ -77,6 +97,7 @@ class MatchingService:
         store: PitchProjectStore,
         assessments: Any,
         reference_scores: Mapping[str, Iterable[float]] | None = None,
+        historical_version: Callable[[str], str | None] | None = None,
         max_concurrency: int = 2,
     ) -> None:
         self.store = store
@@ -84,6 +105,8 @@ class MatchingService:
         self.reference_scores = {
             slug: tuple(values) for slug, values in (reference_scores or {}).items()
         }
+        # Historical likelihoods come from one profile version; others are not comparable.
+        self.historical_version = historical_version or (lambda _slug: None)
         self.max_concurrency = max(1, min(int(max_concurrency), 6))
         self._guard = RLock()
 
@@ -146,7 +169,10 @@ class MatchingService:
 
     def _row(self, assessment: CanonicalAssessmentDetail) -> MatchAssessmentRow:
         fit = RelativeFitView(percentile=None, reference_count=0)
-        if assessment.investment_likelihood is not None and assessment.investor_version_id is None:
+        comparable = assessment.investor_version_id is None or (
+            assessment.investor_version_id == self.historical_version(assessment.vc_slug)
+        )
+        if assessment.investment_likelihood is not None and comparable:
             fit = relative_fit(
                 assessment.investment_likelihood,
                 self.reference_scores.get(assessment.vc_slug, ()),
