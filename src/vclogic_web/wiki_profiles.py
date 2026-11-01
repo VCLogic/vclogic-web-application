@@ -23,7 +23,7 @@ TITLES = dict(zip(CORE, ('Decision policy', 'Investment theses', 'Portfolio and 
 def read_text(path: Path) -> str:
     if path.stat().st_size > 64 * 1024 * 1024:
         raise ValueError('Wiki file exceeds the display size limit')
-    return path.read_text(encoding='utf-8')
+    return path.read_bytes().decode('utf-8')
 
 
 class WikiProfileService(ProfileService):
