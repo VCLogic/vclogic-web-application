@@ -2,6 +2,8 @@
 
 # VCLogic Web Application
 
+> **Part of the [VCLogic suite](https://github.com/VCLogic/vclogic-suite).** To install and run all five components together (collection, memory generation, onboarding, assessment and the web interface), follow the [suite README](https://github.com/VCLogic/vclogic-suite#contents). This README covers using this repository on its own.
+
 A web workspace for exploring investor decision profiles, assessing founder pitches, comparing investor fit, and rehearsing investor questions. Built with **React, TypeScript, and FastAPI**, using the [VCLogic assessment engine](https://github.com/VCLogic/vclogic-vc-agentic-assessment) for execution.
 
 Investor profiles are simulations based on source evidence. They do not represent the real investors or imply endorsement.
